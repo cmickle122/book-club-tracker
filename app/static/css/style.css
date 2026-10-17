@@ -1,0 +1,33 @@
+body {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.spoiler-hidden {
+    filter: blur(6px);
+    user-select: none;
+    transition: filter 0.3s ease;
+}
+
+.spoiler-hidden:hover {
+    cursor: pointer;
+}
+
+/* ==============================================================================
+# WRITE YOUR TEAM'S CUSTOM CSS HERE
+============================================================================== */
+/* Write your code here: */
+
+/* Example: Custom card shadow for book clubs */
+.club-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* To here. */
