@@ -1,0 +1,4 @@
+body{font-family:Arial;margin:0;background:#f8f9fa}
+.navbar{background:#2c3e50;color:#fff;padding:12px 20px}
+.navbar a{color:#fff;text-decoration:none;margin-left:12px}
+.container{max-width:1000px;margin:20px auto;padding:20px;background:#fff;border-radius:8px}
