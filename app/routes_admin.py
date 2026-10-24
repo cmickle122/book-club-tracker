@@ -6,7 +6,7 @@ from app.db import get_db
 admin_bp = Blueprint('admin', __name__)
 
 def _require_login():
-        if 'user_id' not in sesstion:
+        if 'user_id' not in session:
             flash('Please log in first.')
             return False
         return True
@@ -25,18 +25,18 @@ def nominate_book(club_id):
     author = request.form.get('author', '').strip()
     cover_url = request.form.get('cover_url', '').strip()
 
-    db = get_db()
     # Get active poll_id for club_id from BookPolls.
+    db = get_db()
     poll = db.execute(
         'SELECT id FROM BookPolls WHERE club_id = ? AND is_active = 1 LIMIT 1',
-        (club_id),
+        (club_id,)
     ).fetchone()
 
     # Insert the user's book selection into the PollNominations table.
     if poll and title:
         db.execute(
             'INSERT INTO PollNominations (poll_id, nominated_by, title, author, cover_url) VALUES (?, ?, ?, ?, ?)',
-            (poll['id'], title, author, cover_url)
+            (poll['id'], session['user_id'], title, author, cover_url)
         )
         
         db.commit()
@@ -48,14 +48,31 @@ def nominate_book(club_id):
 
 @admin_bp.route('/clubs/<int:club_id>/poll/vote', methods=['POST'])
 def vote_poll(club_id):
-    """DEVELOPER 2: Record User Vote in Book Poll"""
-    # Write your code here:
-    # 1. Extract nomination_id and poll_id from request.form
-    # 2. Insert into PollVotes (poll_id, nomination_id, user_id=session['user_id'])
-    # 3. Catch UNIQUE constraint if user already voted in this poll
-    # 4. Redirect back to club page
-    # To here.
+    """
+    Records user votes in book poll.
+    """
+    # Check if the user is logged in.  
+    if not _require_login():
+        return redirect(url_for('auth.login'))
+
+    # Extract nomination and poll ids from the request form.
+    nomination_id = request.form.get('nomination_id')
+    poll_id = request.form.get('poll_id')
+
+    #  Add the user's vote into the PollVotes unless they have already voted.
+    db = get_db()
+    try:
+        db.execute(
+            'INSERT INTO PollVotes (poll_id, nomination_id, user_id) VALUES (?, ?, ?)',
+            (poll_id, nomination_id, session['user_id'])
+        )
+        db.commit()
+        flash('Vote registered successfully!')
+    except db.IntegrityError:
+        flash('You have already voted in this poll.')
+
     return redirect(url_for('club.view_club', club_id=club_id))
+
 
 @admin_bp.route('/clubs/<int:club_id>/manage', methods=['GET', 'POST'])
 def manage_club(club_id):
