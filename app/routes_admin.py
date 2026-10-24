@@ -1,16 +1,49 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
+import requests
+from app.db import get_db
+
 admin_bp = Blueprint('admin', __name__)
+
+def _require_login():
+        if 'user_id' not in sesstion:
+            flash('Please log in first.')
+            return False
+        return True
 
 @admin_bp.route('/clubs/<int:club_id>/poll/nominate', methods=['POST'])
 def nominate_book(club_id):
-    """DEVELOPER 2: Nominate Candidate Book for Active Poll"""
-    # Write your code here:
-    # 1. Extract title, author, cover_url from request.form
-    # 2. Fetch active poll_id for club_id from BookPolls
-    # 3. Insert into PollNominations (poll_id, nominated_by=session['user_id'], title, author, cover_url)
-    # 4. Redirect to url_for('club.view_club', club_id=club_id)
-    # To here.
+    """
+    Allows the user to nominate a candidate book for an active poll.
+    """
+    # Check if the user is logged in.  
+    if not _require_login():
+        return redirect(url_for('auth.login'))
+
+    # Extract the information from the selected book from the request form.
+    title = request.form.get('title', '').strip()
+    author = request.form.get('author', '').strip()
+    cover_url = request.form.get('cover_url', '').strip()
+
+    db = get_db()
+    # Get active poll_id for club_id from BookPolls.
+    poll = db.execute(
+        'SELECT id FROM BookPolls WHERE club_id = ? AND is_active = 1 LIMIT 1',
+        (club_id),
+    ).fetchone()
+
+    # Insert the user's book selection into the PollNominations table.
+    if poll and title:
+        db.execute(
+            'INSERT INTO PollNominations (poll_id, nominated_by, title, author, cover_url) VALUES (?, ?, ?, ?, ?)',
+            (poll['id'], title, author, cover_url)
+        )
+        
+        db.commit()
+        flash('Your book has been nominated!')
+    else:
+        flash('No active poll found or invalid book title.')
+
     return redirect(url_for('club.view_club', club_id=club_id))
 
 @admin_bp.route('/clubs/<int:club_id>/poll/vote', methods=['POST'])
