@@ -13,7 +13,9 @@ book-club-tracker/
 │   ├── templates/
 │   │   └── partials/
 │   ├── __init__.py
-│   ├── routes.py
+│   ├── routes_admin.py
+│   ├── routes_auth.py
+│   ├── routes_club.py
 │   ├── models.py
 │   └── db.py
 ├── tests/
@@ -34,7 +36,9 @@ book-club-tracker/
 | `app/static/images/` | Images used by the site |
 | `app/templates/` | HTML pages |
 | `app/templates/partials/` | Reusable pieces like the header and footer |
-| `app/routes.py` | Decides which page shows for each URL |
+| `app/routes_admin.py` | Developer 2: Carlianne (Polls, Admin Setup, Chapter Progress) |
+| `app/routes_auth.py` | Developer 1: G'La (Authorization, Dashboard, Search and Join Clubs) |
+| `app/routes_club.py` | Developer 3: Zaden (Discussions, Spoiler Tagging, Member Removal) |
 | `app/models.py` | Database table definitions |
 | `app/db.py` | Database connection |
 | `tests/` | Automated tests |
