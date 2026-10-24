@@ -45,3 +45,7 @@ book-club-tracker/
 | `docs/` | Project documentation (vision, user stories, scenarios, architecture diagram) |
 | `Dockerfile` | Instructions for building the Docker image |
 | `requirements.txt` | List of Python packages the project needs |
+
+
+## Technologies Used:  
+- Google Books API: https://developers.google.com/books/docs/v1/getting_started
