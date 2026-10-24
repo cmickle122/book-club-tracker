@@ -11,6 +11,7 @@ def _require_login():
             return False
         return True
 
+
 @admin_bp.route('/clubs/<int:club_id>/poll/nominate', methods=['POST'])
 def nominate_book(club_id):
     """
@@ -46,6 +47,7 @@ def nominate_book(club_id):
 
     return redirect(url_for('club.view_club', club_id=club_id))
 
+
 @admin_bp.route('/clubs/<int:club_id>/poll/vote', methods=['POST'])
 def vote_poll(club_id):
     """
@@ -76,7 +78,9 @@ def vote_poll(club_id):
 
 @admin_bp.route('/clubs/<int:club_id>/manage', methods=['GET', 'POST'])
 def manage_club(club_id):
-    """DEVELOPER 2: Admin Setup Panel & Google Books API Integration"""
+    """
+    Admin Setup Panel & Google Books API Integration
+    """
     if request.method == 'POST':
         # Write your code here:
         # Action A: Close Poll & Declare Winner
@@ -88,17 +92,37 @@ def manage_club(club_id):
         #   - Extract total_chapters, has_prologue, has_epilogue, target_deadline from request.form
         #   - Update active book record in Books table
         #   - Redirect to url_for('admin.manage_club', club_id=club_id)
-        # To here.
+        
+        
         return redirect(url_for('admin.manage_club', club_id=club_id))
 
     return f"<h1>Admin Management Panel for Club #{club_id} (Developer 2 Placeholder)</h1>"
 
+
 @admin_bp.route('/clubs/<int:club_id>/progress/update', methods=['POST'])
 def update_progress(club_id):
-    """DEVELOPER 2: Save Chapter Progress Checkbox Status"""
-    # Write your code here:
-    # 1. Extract book_id, chapter_num, is_completed from request.form
-    # 2. Insert or Update row in ChapterProgress (user_id=session['user_id'], book_id, chapter_num, is_completed)
-    # 3. Return JSON response or redirect back to club page
-    # To here.
+    """
+    Saves the checkbox status for chapter progress.
+    """
+    # Check if the user is logged in.  
+    if not _require_login():
+        return redirect(url_for('auth.login'))
+
+    # Extract book information from the request form.
+    book_id = request.form.get('book_id')
+    chapter_num = request.form.get('chapter_num')
+    is_completed = 1 if request.form.get('is_comppleted') else 0
+
+    # Add the row in ChapterProgress or update existing row.
+    db = get_db()
+    if is_completed:
+        db.execute('INSERT INTO ChapterProgress (user_id, book_id, chapter_num, is_completed) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, book_id, chapter_num) DO UPDATE SET is_completed=1,
+        (session['user_id'], book_id, chapter_num))
+    else:
+        db.execute(
+            'DELETE FROM ChapterProgress WHERE user_id = ? AND book_id = ? AND chapter_num = ?',
+            (session['user_id'], book_id, chapter_num)
+        )
+    db.commit()
+
     return redirect(url_for('club.view_club', club_id=club_id))
