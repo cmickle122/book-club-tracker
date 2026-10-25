@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <h2>Club Management: {{ club.name }}</h2>
+  <a href="{{ url_for('club.view_club', club_id=club.id) }}" class="btn btn-outline-secondary mb-4">&larr; Back to Club</a>
+
+  <!-- Step 1: Declare poll winner and fetch cover -->
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white">1. Active Poll & Book Selection</div>
+    <div class="card-body">
+      {% if active_poll %}
+        <p><strong>Active Poll:</strong> {{ active_poll.title }}</p>
+        <form method="POST" action="{{ url_for('admin.manage_club', club_id=club.id) }}">
+          <input type="hidden" name="action" value="close_poll">
+          <input type="hidden" name="poll_id" value="{{ active_poll.id }}">
+          <div class="mb-3">
+            <label class="form-label">Winning Book Title (Searches Google Books API for Cover):</label>
+            <input type="text" name="book_title" class="form-control" required placeholder="e.g. Dune">
+          </div>
+          <button type="submit" class="btn btn-warning">Close Poll & Set Active Book</button>
+        </form>
+      {% else %}
+        <p class="text-muted">No active poll running.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Step 2: Set chapters and target reading deadline -->
+  {% if active_book %}
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white">2. Configure Active Book: {{ active_book.title }}</div>
+    <div class="card-body">
+      {% if active_book.cover_url %}
+        <img src="{{ active_book.cover_url }}" alt="Cover" class="img-thumbnail mb-3" style="max-height: 150px;">
+      {% endif %}
+      <form method="POST" action="{{ url_for('admin.manage_club', club_id=club.id) }}">
+        <input type="hidden" name="action" value="setup_book">
+        <input type="hidden" name="book_id" value="{{ active_book.id }}">
+        
+        <div class="mb-3">
+          <label class="form-label">Total Number of Chapters:</label>
+          <input type="number" name="total_chapters" class="form-control" value="{{ active_book.total_chapters or 0 }}" required>
+        </div>
+        
+        <div class="form-check mb-2">
+          <input type="checkbox" name="has_prologue" class="form-check-input" id="prologue" {% if active_book.has_prologue %}checked{% endif %}>
+          <label for="prologue" class="form-check-label">Has a Prologue</label>
+        </div>
+        <div class="form-check mb-3">
+          <input type="checkbox" name="has_epilogue" class="form-check-input" id="epilogue" {% if active_book.has_epilogue %}checked{% endif %}>
+          <label for="epilogue" class="form-check-label">Has an Epilogue</label>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Target Completion Deadline:</label>
+          <input type="date" name="target_deadline" class="form-control" value="{{ active_book.target_deadline or '' }}">
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Save Book Setup</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Step 3: Member management (kick user) -->
+  <div class="card mb-4">
+    <div class="card-header bg-danger text-white">3. Member Management</div>
+    <div class="card-body">
+      <ul class="list-group">
+        {% for member in members %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ member.username }} ({{ member.email }})</span>
+            {% if member.id != club.admin_id %}
+              <form method="POST" action="{{ url_for('club.kick_member', club_id=club.id, user_id=member.id) }}" onsubmit="return confirm('Kick user?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+              </form>
+            {% else %}
+              <span class="badge bg-secondary">Admin</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
