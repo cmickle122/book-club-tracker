@@ -1,86 +1,233 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
 {% block content %}
-<div class="container my-4">
-  <h2>Club Management: {{ club.name }}</h2>
-  <a href="{{ url_for('club.view_club', club_id=club.id) }}" class="btn btn-outline-secondary mb-4">&larr; Back to Club</a>
+<div class="container mt-4">
+    <h2>Admin Panel: {{ club.title }}</h2>
 
-  <!-- Step 1: Declare poll winner and fetch cover -->
-  <div class="card mb-4">
-    <div class="card-header bg-primary text-white">1. Active Poll & Book Selection</div>
-    <div class="card-body">
-      {% if active_poll %}
-        <p><strong>Active Poll:</strong> {{ active_poll.title }}</p>
-        <form method="POST" action="{{ url_for('admin.manage_club', club_id=club.id) }}">
-          <input type="hidden" name="action" value="close_poll">
-          <input type="hidden" name="poll_id" value="{{ active_poll.id }}">
-          <div class="mb-3">
-            <label class="form-label">Winning Book Title (Searches Google Books API for Cover):</label>
-            <input type="text" name="book_title" class="form-control" required placeholder="e.g. Dune">
-          </div>
-          <button type="submit" class="btn btn-warning">Close Poll & Set Active Book</button>
-        </form>
-      {% else %}
-        <p class="text-muted">No active poll running.</p>
-      {% endif %}
-    </div>
-  </div>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-  <!-- Step 2: Set chapters and target reading deadline -->
-  {% if active_book %}
-  <div class="card mb-4">
-    <div class="card-header bg-success text-white">2. Configure Active Book: {{ active_book.title }}</div>
-    <div class="card-body">
-      {% if active_book.cover_url %}
-        <img src="{{ active_book.cover_url }}" alt="Cover" class="img-thumbnail mb-3" style="max-height: 150px;">
-      {% endif %}
-      <form method="POST" action="{{ url_for('admin.manage_club', club_id=club.id) }}">
-        <input type="hidden" name="action" value="setup_book">
-        <input type="hidden" name="book_id" value="{{ active_book.id }}">
+    <div class="row mt-4">
         
-        <div class="mb-3">
-          <label class="form-label">Total Number of Chapters:</label>
-          <input type="number" name="total_chapters" class="form-control" value="{{ active_book.total_chapters or 0 }}" required>
-        </div>
-        
-        <div class="form-check mb-2">
-          <input type="checkbox" name="has_prologue" class="form-check-input" id="prologue" {% if active_book.has_prologue %}checked{% endif %}>
-          <label for="prologue" class="form-check-label">Has a Prologue</label>
-        </div>
-        <div class="form-check mb-3">
-          <input type="checkbox" name="has_epilogue" class="form-check-input" id="epilogue" {% if active_book.has_epilogue %}checked{% endif %}>
-          <label for="epilogue" class="form-check-label">Has an Epilogue</label>
-        </div>
-        
-        <div class="mb-3">
-          <label class="form-label">Target Completion Deadline:</label>
-          <input type="date" name="target_deadline" class="form-control" value="{{ active_book.target_deadline or '' }}">
-        </div>
-        
-        <button type="submit" class="btn btn-primary">Save Book Setup</button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
+        <!-- Poll management and tally results -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">1. Book Poll & Vote Tallies</h4>
+                    {% if latest_poll %}
+                        {% if latest_poll.is_active %}
+                            <span class="badge bg-success">Poll Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Poll Closed</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if latest_poll %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>Poll Title: <strong>{{ latest_poll.title }}</strong></h5>
+                            {% if latest_poll.is_active %}
+                                <form method="POST" class="d-inline">
+                                    <input type="hidden" name="action" value="close_poll">
+                                    <input type="hidden" name="poll_id" value="{{ latest_poll.id }}">
+                                    <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Close voting and freeze final results?');">
+                                        Close Poll & Lock Votes
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
 
-  <!-- Step 3: Member management (kick user) -->
-  <div class="card mb-4">
-    <div class="card-header bg-danger text-white">3. Member Management</div>
-    <div class="card-body">
-      <ul class="list-group">
-        {% for member in members %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ member.username }} ({{ member.email }})</span>
-            {% if member.id != club.admin_id %}
-              <form method="POST" action="{{ url_for('club.kick_member', club_id=club.id, user_id=member.id) }}" onsubmit="return confirm('Kick user?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
-              </form>
-            {% else %}
-              <span class="badge bg-secondary">Admin</span>
-            {% endif %}
-          </li>
-        {% endfor %}
-      </ul>
+                        <h6>Final Nomination Tallies:</h6>
+                        {% if poll_results %}
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">Cover</th>
+                                            <th>Title</th>
+                                            <th>Author</th>
+                                            <th style="width: 120px;" class="text-center">Votes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for result in poll_results %}
+                                            <tr {% if loop.first %}class="table-success"{% endif %}>
+                                                <td>
+                                                    {% if result.cover_url %}
+                                                        <img src="{{ result.cover_url }}" alt="Cover" style="height: 60px; object-fit: cover;">
+                                                    {% else %}
+                                                        <span class="text-muted small">No Cover</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <strong>{{ result.title }}</strong>
+                                                    {% if loop.first %}
+                                                        <span class="badge bg-success ms-2">Top Vote / Winner</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ result.author or 'Unknown' }}</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-primary rounded-pill fs-6">{{ result.vote_count }}</span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No nominations found for this poll.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted mb-0">No poll has been created for this club yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Google Books API search and candidate selection -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0">2. Search & Select Active Book (Google Books API)</h4>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Book search form -->
+                    <form method="POST" class="row g-3 mb-4">
+                        <input type="hidden" name="action" value="search_books">
+                        <div class="col-md-9">
+                            <input type="text" name="search_query" class="form-control" placeholder="Type winning book title or query..." value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">Search Google Books</button>
+                        </div>
+                    </form>
+
+                    <!-- Candidates Cards -->
+                    {% if search_results %}
+                        <h5 class="mb-3">Select from Google Books Candidates:</h5>
+                        <div class="row">
+                            {% for book in search_results %}
+                                <div class="col-md-3 mb-3">
+                                    <div class="card h-100 text-center shadow-sm">
+                                        <div class="p-2" style="height: 180px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                                            {% if book.cover_url %}
+                                                <img src="{{ book.cover_url }}" class="img-fluid" style="max-height: 160px;" alt="{{ book.title }}">
+                                            {% else %}
+                                                <span class="text-muted">No Image Available</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <h6 class="card-title text-truncate" title="{{ book.title }}">{{ book.title }}</h6>
+                                            <p class="card-text text-muted small text-truncate">{{ book.author }}</p>
+                                            <form method="POST" class="mt-auto">
+                                                <input type="hidden" name="action" value="select_book">
+                                                <input type="hidden" name="book_title" value="{{ book.title }}">
+                                                <input type="hidden" name="author" value="{{ book.author }}">
+                                                <input type="hidden" name="cover_url" value="{{ book.cover_url }}">
+                                                <button type="submit" class="btn btn-success btn-sm w-100">Select This Book</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active book chapter and target deadline setup -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">3. Active Book Details & Chapter Setup</h4>
+                </div>
+                <div class="card-body">
+                    {% if active_book %}
+                        <div class="row align-items-center mb-4 p-3 bg-light rounded">
+                            <div class="col-auto">
+                                {% if active_book.cover_url %}
+                                    <img src="{{ active_book.cover_url }}" alt="Active Cover" style="height: 100px;">
+                                {% else %}
+                                    <div style="width: 70px; height: 100px; background: #ccc; display: flex; align-items: center; justify-content: center;" class="text-muted small">No Cover</div>
+                                {% endif %}
+                            </div>
+                            <div class="col">
+                                <h5>Active Book: <strong>{{ active_book.title }}</strong></h5>
+                                <p class="mb-0 text-muted">Author: {{ active_book.author or 'Unknown' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Chapter and Deadline setup form -->
+                        <form method="POST">
+                            <input type="hidden" name="action" value="setup_book">
+                            <input type="hidden" name="book_id" value="{{ active_book.id }}">
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label font-weight-bold">Total Chapters</label>
+                                    <input type="number" name="total_chapters" class="form-control" min="1" value="{{ active_book.total_chapters if active_book.total_chapters else '' }}" required>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label font-weight-bold">Target Reading Deadline</label>
+                                    <input type="date" name="target_deadline" class="form-control" value="{{ active_book.target_deadline if active_book.target_deadline else '' }}">
+                                </div>
+
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-check me-3">
+                                        <input class="form-check-input" type="checkbox" name="has_prologue" id="has_prologue" {% if active_book.has_prologue %}checked{% endif %}>
+                                        <label class="form-check-label" for="has_prologue">Includes Prologue</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="has_epilogue" id="has_epilogue" {% if active_book.has_epilogue %}checked{% endif %}>
+                                        <label class="form-check-label" for="has_epilogue">Includes Epilogue</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mt-4">
+                                    <button type="submit" class="btn btn-primary">Save Book Setup</button>
+                                </div>
+                            </div>
+                        </form>
+                    {% else %}
+                        <p class="text-muted mb-0">No active book has been selected yet. Search and choose a book above to unlock chapter setup.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Club member list -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">Club Members ({{ members|length }})</h4>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for member in members %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ member.username }}</strong>
+                                    <span class="text-muted ms-2">({{ member.email }})</span>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
     </div>
-  </div>
 </div>
 {% endblock %}
