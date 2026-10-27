@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>{{ club['name'] }}</h2>
+  <p>{{ club['description'] }} | Genre: {{ club['genre'] }} | Admin: {{ club['admin_name'] }}</p>
+
+  {% if active_book %}
+  <div class="card mb-4">
+    <div class="card-body d-flex">
+      {% if active_book['cover_url'] %}<img src="{{ active_book['cover_url'] }}" style="height:150px" class="me-3">{% endif %}
+      <div>
+        <h4>{{ active_book['title'] }} by {{ active_book['author'] }}</h4>
+        <p>Deadline: {{ active_book['target_deadline'] }}</p>
+        <p>Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
+        <div class="progress"><div class="progress-bar" style="width: {{ my_progress['pct'] }}%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h5>Chapter Discussions (spoiler-protected)</h5>
+  <div class="list-group mb-4">
+    {% for ch in chapters %}
+      <a href="{{ url_for('club.view_discussion', club_id=club['id'], chapter_num=ch) }}" class="list-group-item">
+        {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
+      </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p>No active book yet. Check polls below.</p>
+  {% endif %}
+
+  {% if active_poll %}
+  <h5>Active Poll: {{ active_poll['title'] }}</h5>
+  <ul>{% for n in nominations %}<li>{{ n['title'] }} - {{ n['vote_count'] }} votes</li>{% endfor %}</ul>
+  {% endif %}
+
+  <h5>Members</h5>
+  <ul class="list-group mb-3">
+    {% for m in members %}
+    <li class="list-group-item d-flex justify-content-between">
+      {{ m['username'] }} - {{ members_progress.get(m['id'], {'pct':0})['pct'] }}%
+      {% if is_admin and m['id'] != session['user_id'] %}
+      <form method="POST" action="{{ url_for('club.kick_member', club_id=club['id'], user_id=m['id']) }}">
+        <button class="btn btn-sm btn-danger">Kick</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <form method="POST" action="{{ url_for('club.leave_club', club_id=club['id']) }}">
+    <button class="btn btn-outline-danger">Leave Club</button>
+  </form>
+</div>
+{% endblock %}
