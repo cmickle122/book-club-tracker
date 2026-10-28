@@ -1,11 +1,62 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Search Clubs</h2>
+<div class="container mt-4">
+  <h2>Search Clubs</h2>
+  <p class="text-muted">Find by name, genre, or description. Public vs Private shown.</p>
 
-<form method="GET">
-    <input name="q" placeholder="Search clubs">
-    <button type="submit">Search</button>
-</form>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+          {{ m }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
+  <form method="GET" action="{{ url_for('auth.search_clubs') }}" class="row g-2 mb-4">
+    <div class="col-md-8">
+      <input name="q" value="{{ q or '' }}" class="form-control" placeholder="Search clubs by name, genre...">
+    </div>
+    <div class="col-md-4">
+      <button type="submit" class="btn btn-primary w-100">Search</button>
+    </div>
+  </form>
+
+  <div class="row">
+    {% for club in clubs %}
+      <div class="col-md-6 mb-3">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <h5>{{ club['name'] }}</h5>
+              {% if club['is_private'] %}
+                <span class="badge bg-warning text-dark">Private</span>
+              {% else %}
+                <span class="badge bg-success">Public</span>
+              {% endif %}
+            </div>
+            <p class="text-muted"><small>{{ club['genre'] or 'General' }} • {{ club['description'][:120] }}</small></p>
+            
+            <form method="POST" action="{{ url_for('auth.join_club', club_id=club['id']) }}" class="d-flex">
+              {% if club['is_private'] %}
+                <input name="passcode" type="password" class="form-control form-control-sm me-2" placeholder="Passcode required" required>
+              {% endif %}
+              <button class="btn btn-sm btn-primary">Join</button>
+              <a href="{{ url_for('club.view_club', club_id=club['id']) }}" class="btn btn-sm btn-outline-secondary ms-2">View</a>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="col-12">
+        <div class="alert alert-info">No clubs found for "{{ q }}". <a href="{{ url_for('auth.create_club') }}">Create one?</a></div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <a href="{{ url_for('auth.dashboard') }}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+</div>
 {% endblock %}
