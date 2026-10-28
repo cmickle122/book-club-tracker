@@ -105,7 +105,7 @@ def search_clubs():
     else:
         clubs = db.execute('SELECT * FROM BookClubs').fetchall()
 
-    return render_template('search.html', clubs=clubs, q=q)
+    return render_template('search_clubs.html', clubs=clubs, q=q)
 
 @auth_bp.route('/clubs/create', methods=['GET', 'POST'])
 def create_club():
