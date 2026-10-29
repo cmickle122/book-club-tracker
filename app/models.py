@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS Users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-REATE TABLE IF NOT EXISTS BookClubs (
+CREATE TABLE IF NOT EXISTS BookClubs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     title TEXT,
@@ -101,10 +101,4 @@ CREATE TABLE IF NOT EXISTS DiscussionPosts (
     FOREIGN KEY (book_id) REFERENCES Books (id),
     FOREIGN KEY (user_id) REFERENCES Users (id)
 );
-
--- ==============================================================================
--- ADD EXTRA TABLES BELOW IF NEEDED
--- ==============================================================================
-
-
 """
