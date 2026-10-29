@@ -1,7 +1,19 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-
 import requests
-from app.db import get_db
+from app.db import (
+    get_active_poll,
+    add_nomination,
+    record_vote,
+    get_club_by_id,
+    close_poll,
+    set_active_book,
+    setup_book_details,
+    get_latest_poll,
+    get_poll_results,
+    get_active_book,
+    get_club_members,
+    save_user_progress,
+)
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -26,22 +38,11 @@ def nominate_book(club_id):
     author = request.form.get('author', '').strip()
     cover_url = request.form.get('cover_url', '').strip()
 
-    # Get active poll_id for club_id from BookPolls
-    db = get_db()
-    poll = db.execute(
-        'SELECT id FROM BookPolls WHERE club_id = ? AND is_active = 1 LIMIT 1',
-        (club_id,)
-    ).fetchone()
+    poll = get_active_poll(club_id)
 
-    # Insert the user's book selection into the PollNominations table
     if poll and title:
-        db.execute(
-            'INSERT INTO PollNominations (poll_id, nominated_by, title, author, cover_url) VALUES (?, ?, ?, ?, ?)',
-            (poll['id'], session['user_id'], title, author, cover_url)
-        )
-        
-        db.commit()
-        flash('Your book has been nominated!')
+        add_nominations(poll['id'], session['user_id'], title, author, cover_url)
+        flash('Your book as been nominated!')
     else:
         flash('No active poll found or invalid book title.')
 
@@ -61,16 +62,9 @@ def vote_poll(club_id):
     nomination_id = request.form.get('nomination_id')
     poll_id = request.form.get('poll_id')
 
-    #  Add the user's vote into the PollVotes unless they have already voted
-    db = get_db()
-    try:
-        db.execute(
-            'INSERT INTO PollVotes (poll_id, nomination_id, user_id) VALUES (?, ?, ?)',
-            (poll_id, nomination_id, session['user_id'])
-        )
-        db.commit()
+    if record_vote(poll_id, nomination_id, session['user_id']):
         flash('Vote registered successfully!')
-    except db.IntegrityError:
+    else:
         flash('You have already voted in this poll.')
 
     return redirect(url_for('club.view_club', club_id=club_id))
@@ -81,14 +75,12 @@ def manage_club(club_id):
     """
     Admin setup panel: Close Poll -> View Tallies -> Google Books Search -> Select Book -> Chapter Setup
     """
-    # Check if the user is logged in
     if not _require_login():
         return redirect(url_for('auth.login'))
 
-    db = get_db()
-    club = db.execute('SELECT * FROM BookClubs WHERE id = ?', (club_id,)).fetchone()
+    # Helper 1: Fetch club
+    club = get_club_by_id(club_id)
 
-    # Check if the user is the club admin
     if not club or club['admin_id'] != session['user_id']:
         flash('Access denied. Admin permissions required.')
         return redirect(url_for('club.view_club', club_id=club_id))
@@ -96,20 +88,18 @@ def manage_club(club_id):
     search_results = []
     search_query = ''
 
-    # Admin actions submitted in the form
     if request.method == 'POST':
         action = request.form.get('action')
 
-        # 1. Close the Active Poll
+        # 1. Close Active Poll
         if action == 'close_poll':
             poll_id = request.form.get('poll_id')
             if poll_id:
-                db.execute('UPDATE BookPolls SET is_active = 0 WHERE id = ? AND club_id = ?', (poll_id, club_id))
-                db.commit()
+                close_poll(poll_id, club_id)
                 flash('The poll has closed! Voting is locked and final results are displayed.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 2. Search Google Books API for up to 4 Candidates
+        # 2. Search Google Books API (No DB changes here)
         elif action == 'search_books':
             search_query = request.form.get('search_query', '').strip()
             if not search_query:
@@ -142,7 +132,7 @@ def manage_club(club_id):
                 except Exception:
                     flash('Error fetching book results from Google Books API.')
 
-        # 3. Select candidate book
+        # 3. Select Candidate Book
         elif action == 'select_book':
             book_title = request.form.get('book_title', '').strip()
             author = request.form.get('author', '').strip()
@@ -152,19 +142,11 @@ def manage_club(club_id):
                 flash('Invalid book selection.')
                 return redirect(url_for('admin.manage_club', club_id=club_id))
 
-            # Deactivate previous active book for this club
-            db.execute('UPDATE Books SET is_active = 0 WHERE club_id = ?', (club_id,))
-
-            # Insert selected book as active
-            db.execute(
-                'INSERT INTO Books (club_id, title, author, cover_url, is_active) VALUES (?, ?, ?, ?, 1)',
-                (club_id, book_title, author, cover_url)
-            )
-            db.commit()
+            set_active_book(club_id, book_title, author, cover_url)
             flash('Active book set successfully! You can now configure its chapters and target deadline.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 4. Set up book chapters and target reading deadline
+        # 4. Set Up Chapters & Target Deadline
         elif action == 'setup_book':
             book_id = request.form.get('book_id')
             try:
@@ -179,49 +161,15 @@ def manage_club(club_id):
             has_epilogue = 1 if request.form.get('has_epilogue') else 0
             target_deadline = request.form.get('target_deadline') or None
 
-            # Update active book details in Books table
-            db.execute(
-                '''UPDATE Books 
-                   SET total_chapters = ?, has_prologue = ?, has_epilogue = ?, target_deadline = ? 
-                   WHERE id = ? AND club_id = ?''', 
-                (total_chapters, has_prologue, has_epilogue, target_deadline, book_id, club_id)
-            )
-            db.commit()
+            setup_book_details(book_id, club_id, total_chapters, has_prologue, has_epilogue, target_deadline)
             flash('Book details set up successfully!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-    # Fetch the club's latest poll (active OR closed)
-    latest_poll = db.execute(
-        'SELECT * FROM BookPolls WHERE club_id = ? ORDER BY created_at DESC LIMIT 1', 
-        (club_id,)
-    ).fetchone()
-
-    # Calculate poll tallies using a LEFT JOIN so books with 0 votes are included
-    poll_results = []
-    if latest_poll:
-        poll_results = db.execute(
-            '''SELECT pn.id, pn.title, pn.author, pn.cover_url, COUNT(pv.id) AS vote_count
-               FROM PollNominations pn
-               LEFT JOIN PollVotes pv ON pn.id = pv.nomination_id
-               WHERE pn.poll_id = ?
-               GROUP BY pn.id
-               ORDER BY vote_count DESC''',
-            (latest_poll['id'],)
-        ).fetchall()
-
-    # Get the club's active book
-    active_book = db.execute(
-        'SELECT * FROM Books WHERE club_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1', 
-        (club_id,)
-    ).fetchone()
-
-    # Get all members of the club
-    members = db.execute(
-        '''SELECT Users.id, Users.username, Users.email 
-           FROM Users JOIN ClubMemberships ON Users.id = ClubMemberships.user_id 
-           WHERE ClubMemberships.club_id = ?''', 
-        (club_id,)
-    ).fetchall()
+    # Helper calls for template data loading
+    latest_poll = get_latest_poll(club_id)
+    poll_results = get_poll_results(latest_poll['id']) if latest_poll else []
+    active_book = get_active_book(club_id)
+    members = get_club_members(club_id)
 
     return render_template(
         'manage_club.html', 
@@ -248,16 +196,6 @@ def update_progress(club_id):
     chapter_num = request.form.get('chapter_num')
     is_completed = 1 if request.form.get('is_completed') else 0
 
-    # Add the row in ChapterProgress or update existing row
-    db = get_db()
-    if is_completed:
-        db.execute('INSERT INTO ChapterProgress (user_id, book_id, chapter_num, is_completed) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, book_id, chapter_num) DO UPDATE SET is_completed = 1',
-        (session['user_id'], book_id, chapter_num, is_completed))
-    else:
-        db.execute(
-            'DELETE FROM ChapterProgress WHERE user_id = ? AND book_id = ? AND chapter_num = ?',
-            (session['user_id'], book_id, chapter_num)
-        )
-    db.commit()
+    save_user_progress(session['user_id'], book_id, chapter_num, is_completed)
 
     return redirect(url_for('club.view_club', club_id=club_id))
