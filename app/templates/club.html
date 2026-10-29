@@ -4,6 +4,10 @@
   <h2>{{ club['name'] }}</h2>
   <p>{{ club['description'] }} | Genre: {{ club['genre'] }} | Admin: {{ club['admin_name'] }}</p>
 
+  {% if is_admin %}
+  <a href="{{ url_for('admin.manage_club', club_id=club['id']) }}" class="btn btn-warning mb-3">Manage Club (Admin Panel)</a>
+  {% endif %}
+
   {% if active_book %}
   <div class="card mb-4">
     <div class="card-body d-flex">
