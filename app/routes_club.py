@@ -27,17 +27,28 @@ def view_club(club_id):
 
     active_book = get_active_book(club_id)
 
-    progress_pct = 0
-    total_units = 0
-    completed = 0
-    user_progress = None
+    # 1. Initialize my_progress dict & chapters list expected by club.html
+    my_progress = {'completed': 0, 'total': 0, 'pct': 0}
+    chapters = []
+
     if active_book:
-        total_units = (active_book['total_chapters'] or 0) + (1 if active_book['has_prologue'] else 0) + (1 if active_book['has_epilogue'] else 0)
-        user_progress = get_user_chapter_progress(session['user_id'], active_book['id'])
-        if user_progress:
-            completed = user_progress['completed_chapters'] or 0
-        if total_units > 0:
-            progress_pct = round((completed / total_units) * 100)
+        total_chapters = active_book['total_chapters'] or 0
+        has_prologue = 1 if active_book['has_prologue'] else 0
+        has_epilogue = 1 if active_book['has_epilogue'] else 0
+
+        total_units = total_chapters + has_prologue + has_epilogue
+        completed = get_user_completed_chapters(session['user_id'], active_book['id'])
+        pct = round((completed / total_units) * 100) if total_units > 0 else 0
+
+        my_progress = {'completed': completed, 'total': total_units, 'pct': pct}
+
+        # 2. Build chapter list for discussion board links (0 = Prologue, 1..N = Chapters, N+1 = Epilogue)
+        if has_prologue:
+            chapters.append(0)
+        for ch in range(1, total_chapters + 1):
+            chapters.append(ch)
+        if has_epilogue:
+            chapters.append(total_chapters + 1)
 
     active_poll = get_active_poll(club_id)
     nominations = get_poll_nominations(active_poll['id']) if active_poll else []
@@ -45,11 +56,11 @@ def view_club(club_id):
     members = get_club_members(club_id)
 
     members_progress = {}
-    if active_book and total_units > 0:
+    if active_book and my_progress['total'] > 0:
         for m in members:
             comp = get_user_completed_chapters(m['id'], active_book['id'])
-            pct = round((comp / total_units) * 100) if total_units else 0
-            members_progress[m['id']] = {'pct': pct, 'completed': comp}
+            p_pct = round((comp / my_progress['total']) * 100) if my_progress['total'] else 0
+            members_progress[m['id']] = {'pct': p_pct, 'completed': comp}
 
     is_admin = (club['admin_id'] == session['user_id'])
 
@@ -57,10 +68,8 @@ def view_club(club_id):
         'club.html',
         club=club,
         active_book=active_book,
-        progress_pct=progress_pct,
-        total_units=total_units,
-        completed=completed,
-        user_progress=user_progress,
+        my_progress=my_progress,
+        chapters=chapters,
         active_poll=active_poll,
         nominations=nominations,
         members=members,
@@ -105,10 +114,12 @@ def view_discussion(club_id, chapter_num):
         'discussion.html',
         club=club,
         active_book=active_book,
+        book=active_book,
+        club_id=club_id,
         chapter_num=chapter_num,
         posts=posts,
-        is_archived=(active_book['is_active']==0),
-        max_completed=max_completed
+        is_archived=(active_book['is_active'] == 0),
+        max_completed=max_completed,
     )
 
 @club_bp.route('/clubs/<int:club_id>/leave', methods=['POST'])

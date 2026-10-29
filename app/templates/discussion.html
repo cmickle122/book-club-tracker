@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-4">
-  <a href="{{ url_for('club.view_club', club_id=club_id) }}">← Back to {{ book['title'] }}</a>
-  <h3 class="mt-2">Chapter {{ chapter_num }} Discussion</h3>
+  <a href="{{ url_for('club.view_club', club_id=club_id) }}">← Back to {{ club['name'] }}</a>
+  <h3 class="mt-2">
+    {% if chapter_num == 0 %}
+      Prologue Discussion
+    {% elif chapter_num > active_book['total_chapters'] %}
+      Epilogue Discussion
+    {% else %}
+      Chapter {{ chapter_num }} Discussion</h3>
+    {% endif %}
+  </h3>
   {% if is_archived %}<div class="alert alert-warning">This book is archived. Read-only mode.</div>{% endif %}
 
   {% for p in posts %}
@@ -13,7 +21,7 @@
 
   {% if not is_archived %}
   <form method="POST" class="mt-3">
-    <textarea name="content" class="form-control" rows="3" placeholder="Share your thoughts (no spoilers beyond Ch.{{ chapter_num }})" required></textarea>
+    <textarea name="content" class="form-control" rows="3" placeholder="Share your thoughts on this chapter!" required></textarea>
     <button class="btn btn-primary mt-2">Post</button>
   </form>
   {% endif %}

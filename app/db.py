@@ -71,7 +71,7 @@ def get_user_clubs(user_id):
     Fetch all clubs user belongs to
     """
     db = get_db()
-    clubs_raw = db.execute('''
+    return db.execute('''
         SELECT bc.* FROM BookClubs bc
         JOIN ClubMemberships cm ON bc.id = cm.club_id
         WHERE cm.user_id = ?
@@ -232,9 +232,11 @@ def get_user_completed_chapters(user_id, book_id):
     Returns chapter completion count for progress bars.
     """
     db = get_db()
-    prog = db.execute('''SELECT completed_chapters FROM ChapterProgress WHERE user_id = ? AND book_id = ?
-    ''', (user_id, book_id)).fetchone()
-    return prog['completed_chapters'] if prog else 0
+    row = db.execute(
+        'SELECT COUNT(*) AS total FROM ChapterProgress WHERE user_id = ? AND book_id = ? AND is_completed = 1',
+        (user_id, book_id)
+    ).fetchone()
+    return row['total'] if row else 0
 
 def get_user_max_chapter(user_id, book_id):
     """
@@ -283,7 +285,12 @@ def get_club_by_id(club_id):
     Retrieves club data by id.
     """
     db = get_db()
-    return db.execute('SELECT * FROM BookClubs WHERE id = ?', (club_id,)).fetchone()
+    return db.execute('''
+        SELECT bc.*, u.username AS admin_name 
+        FROM BookClubs bc 
+        JOIN Users u ON bc.admin_id = u.id 
+        WHERE bc.id = ?
+    ''', (club_id,)).fetchone()
     
 def get_active_book(club_id):
     """

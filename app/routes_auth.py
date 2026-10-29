@@ -1,14 +1,16 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.db import (
-    create_user, 
-    get_user_by_email, 
-    get_user_by_username_or_email, 
+    get_user_by_email,
+    get_user_by_username_or_email,
+    create_user,
+    get_user_clubs,
+    find_clubs,
+    insert_club,
+    get_club_by_id,
     is_club_member,
     add_club_member,
-    get_user_clubs, 
-    find_clubs, 
-    insert_club
+    get_active_book
 )
 
 auth_bp = Blueprint('auth', __name__)
@@ -16,19 +18,16 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/')
 @auth_bp.route('/dashboard')
 def dashboard():
-    """DEVELOPER 1: User Dashboard (Lists joined clubs and active reading targets)"""
+    """DEVELOPER 1: User Dashboard"""
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     clubs_raw = get_user_clubs(session['user_id'])
 
-    # 3. For each club, fetch active book title, cover_url, and target_deadline
     clubs = []
     for club in clubs_raw:
-        active_book = db.execute(
-            'SELECT * FROM Books WHERE club_id = ? AND is_active = 1 LIMIT 1',
-            (club['id'],)
-        ).fetchone()
+        # Use helper function instead of raw db.execute
+        active_book = get_active_book(club['id'])
         clubs.append({
             'club': club,
             'active_book': active_book
@@ -43,7 +42,7 @@ def login():
         email = request.form.get('email','').strip()
         password = request.form.get('password','')
 
-        user = get_user_by_email
+        user = get_user_by_email(email)
         
         if user and check_password_hash(user['password_hash'], password):
             session['user_id'] = user['id']
