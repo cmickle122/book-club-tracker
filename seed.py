@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash
+from app.models import SCHEMA_SQL
 
 # Path to database
 DB_PATH = 'bookclub.db'
@@ -8,6 +9,8 @@ DB_PATH = 'bookclub.db'
 def seed_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    cursor.executescript(SCHEMA_SQL) 
 
     print("Seeding database...")
 
@@ -201,7 +204,7 @@ def seed_database():
         INSERT OR IGNORE INTO UserBookProgress (user_id, book_id, highest_chapter_completed)
         VALUES (?, ?, ?)
     ''', (6, 2, 5))
-    
+
     conn.commit()
     conn.close()
     print("Database seeded successfully!")

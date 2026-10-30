@@ -37,15 +37,17 @@ def view_club(club_id):
         has_epilogue = 1 if active_book['has_epilogue'] else 0
 
         total_units = total_chapters + has_prologue + has_epilogue
-        highest_ch = get_user_max_chapter(session['user_id'], active_book['id'])
         completed = get_user_completed_chapters(session['user_id'], active_book['id'], has_prologue)
         pct = round((completed / total_units) * 100) if total_units > 0 else 0
+
+        # Fetch the exact highest chapter integer (-1 for Not Started, 0 for Prologue, 1..N for Chapters)
+        highest_ch = get_user_max_chapter(session['user_id'], active_book['id'])
 
         my_progress = {
             'completed': completed, 
             'total': total_units, 
             'pct': pct, 
-            'highest_chapter': highest_ch
+            'highest_chapter': highest_ch if highest_ch is not None else -1
         }
 
         # 2. Build chapter list for discussion board links (0 = Prologue, 1..N = Chapters, N+1 = Epilogue)
@@ -72,7 +74,6 @@ def view_club(club_id):
         active_poll=active_poll,
         nominations=nominations,
         members=members,
-        members_progress=members_progress,
         is_admin=is_admin
     )
 
@@ -91,12 +92,8 @@ def view_discussion(club_id, chapter_num):
         flash('This book is archived. Read-only mode.')
         if request.method == 'POST':
             return redirect(url_for('club.view_discussion', club_id=club_id, chapter_num=chapter_num))
-    
+
     max_completed = get_user_max_chapter(session['user_id'], active_book['id'])
-    is_admin = (club['admin_id'] == session['user_id'])
-    if not is_admin and chapter_num > 1 and max_completed < (chapter_num - 1):
-        flash(f'Finish chapter {chapter_num - 1} first to unlock this discussion.')
-        return redirect(url_for('club.view_club', club_id=club_id))
 
     if request.method == 'POST':
         if active_book['is_active'] == 0:

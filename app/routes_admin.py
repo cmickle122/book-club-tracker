@@ -134,10 +134,18 @@ def manage_club(club_id):
 
         # 3. Select Candidate Book
         elif action == 'select_book':
+            # Check if an active poll is still open
+            active_poll = get_active_poll(club_id)
+            if active_poll:
+                flash('Voting is still open! You must close the active poll before selecting a winning book.')
+                return redirect(url_for('admin.manage_club', club_id=club_id))
+
+            # Extract the form data
             book_title = request.form.get('book_title', '').strip()
             author = request.form.get('author', '').strip()
             cover_url = request.form.get('cover_url', '').strip()
 
+            # Validate defined book_title
             if not book_title:
                 flash('Invalid book selection.')
                 return redirect(url_for('admin.manage_club', club_id=club_id))
@@ -193,8 +201,9 @@ def update_progress(club_id):
 
     # Extract book information from the request form
     book_id = request.form.get('book_id')
-    highest_chapter = int(request.form.get('highest_chapter', -1))
+    highest_chapter = request.form.get('highest_chapter')
 
-    save_user_progress(session['user_id'], book_id, highest_chapter)
+    if book_id is not None and highest_chapter is not None:
+        save_user_progress(session['user_id'], int(book_id), int(highest_chapter))
 
     return redirect(url_for('club.view_club', club_id=club_id))

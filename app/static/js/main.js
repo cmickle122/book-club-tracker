@@ -8,20 +8,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetChapter = parseInt(this.getAttribute('data-chapter-num') || '0');
 
             if (targetChapter > userProgress) {
-                const confirmAccess = confirm(`⚠️ SPOILER WARNING!\n\nYour current progress is Chapter ${userProgress}, but this thread discusses Chapter ${targetChapter}.\n\nAre you sure you want to view this thread?`);
+                const confirmAccess = confirm(
+                    `⚠️ SPOILER WARNING!\n\nYour current progress is Chapter ${userProgress}, but this thread discusses Chapter ${targetChapter}.\n\nClick OK to proceed to the discussion. Click Cancel to go back.`
+                );
                 if (!confirmAccess) {
                     e.preventDefault();
                 }
             }
         });
     });
-
-    // ==============================================================================
-    // WRITE YOUR TEAM'S CUSTOM JAVASCRIPT HERE
-    // ==============================================================================
-    // Write your code here:
-
-    // Example custom event handling
-
-    // To here.
 });

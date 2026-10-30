@@ -193,9 +193,9 @@ def setup_book_details(book_id, club_id, total_chapters, has_prologue, has_epilo
     )
     db.commit()
     
-def save_user_progress(user_id, book_id, chapter_num, is_completed):
+def save_user_progress(user_id, book_id, highest_chapter):
     """
-    Updates ChapterProgress status.
+    Updates UserBookProgress status.
     """
     db = get_db()
     db.execute('''
@@ -224,7 +224,7 @@ def get_poll_nominations(poll_id):
     db = get_db()
     return db.execute('SELECT * FROM PollNominations WHERE poll_id = ?', (poll_id,)).fetchall()
 
-def get_user_completed_chapters(user_id, book_id):
+def get_user_completed_chapters(user_id, book_id, has_prologue=0):
     """
     Returns chapter completion count for progress bars.
     """
@@ -245,9 +245,7 @@ def get_user_max_chapter(user_id, book_id):
         'SELECT highest_chapter_completed FROM UserBookProgress WHERE user_id = ? AND book_id = ?',
         (user_id, book_id)
     ).fetchone()
-    if row and row['highest_chapter_completed'] is not None:
-        return row['highest_chapter_completed']
-    return -1
+    return row['highest_chapter_completed'] if row and row['highest_chapter_completed'] is not None else -1
 
 def add_discussion_post(club_id, book_id, chapter_num, user_id, content):
     """

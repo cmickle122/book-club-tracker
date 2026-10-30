@@ -8,6 +8,7 @@
   <a href="{{ url_for('admin.manage_club', club_id=club['id']) }}" class="btn btn-warning mb-3">Manage Club (Admin Panel)</a>
   {% endif %}
 
+  <!-- Active read and chapter discussions -->
   {% if active_book %}
   <div class="card mb-4">
     <div class="card-body d-flex align-items-center">
@@ -44,20 +45,45 @@
   <h5>Chapter Discussions (spoiler-protected)</h5>
   <div class="list-group mb-4">
     {% for ch in chapters %}
-      <a href="{{ url_for('club.view_discussion', club_id=club['id'], chapter_num=ch) }}" class="list-group-item">
+      <a href="{{ url_for('club.view_discussion', club_id=club['id'], chapter_num=ch) }}" 
+         class="list-group-item list-group-item-action spoiler-thread-link"
+         data-user-progress="{{ my_progress['highest_chapter'] }}"
+         data-chapter-num="{{ ch }}">
         {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
       </a>
     {% endfor %}
   </div>
-  {% else %}
-    <p>No active book yet. Check polls below.</p>
-  {% endif %}
 
-  {% if active_poll %}
+  {% elif active_poll %}
+
+  <!-- Voting Poll (only if there is NO active book) -->
   <h5>Active Poll: {{ active_poll['title'] }}</h5>
-  <ul>{% for n in nominations %}<li>{{ n['title'] }} - {{ n['vote_count'] }} votes</li>{% endfor %}</ul>
+  <ul class="list-group mb-4">
+    {% for n in nominations %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ n['title'] }}</strong> {% if n['author'] %}by {{ n['author'] }}{% endif %}
+          <span class="badge bg-secondary ms-2">{{ n['vote_count'] }} votes</span>
+        </div>
+        <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
+          <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
+          <input type="hidden" name="nomination_id" value="{{ n['id'] }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
+        </form>
+      </li>
+    {% else %}
+      <li class="list-group-item text-muted">No nominations found for this poll.</li>
+    {% endfor %}
+  </ul>
+
+  {% else %}
+  <!-- No active read or poll available -->
+  <div class="alert alert-secondary mb-4">
+    No active book or voting poll right now.
+  </div>
   {% endif %}
 
+  <!-- Members List -->
   <h5>Members</h5>
   <ul class="list-group mb-3">
     {% for m in members %}
