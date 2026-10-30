@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-4">
-  <a href="{{ url_for('club.view_club', club_id=club_id) }}">← Back to {{ club['name'] }}</a>
+  <a href="{{ url_for('club.view_club', club_id=club['id']) }}" class="btn btn-outline-secondary btn-sm mb-3">← Back to {{ club['name'] }}</a>
   <h3 class="mt-2">
     {% if chapter_num == 0 %}
       Prologue Discussion

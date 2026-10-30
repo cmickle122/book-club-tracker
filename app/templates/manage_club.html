@@ -2,14 +2,15 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Admin Panel: {{ club.title }}</h2>
+    <a href="{{ url_for('club.view_club', club_id=club['id']) }}" class="btn btn-outline-secondary btn-sm mb-3">← Back to {{ club['name'] }}</a>
+    <h2>Admin Panel: {{ club.name }}</h2>
     <div class="row mt-4">
         
-        <!-- Poll management and tally results -->
+        <!-- Book poll and vote tallies -->
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">1. Book Poll & Vote Tallies</h4>
+                    <h4 class="mb-0">Current Book Poll</h4>
                     {% if latest_poll %}
                         {% if latest_poll.is_active %}
                             <span class="badge bg-success">Poll Active</span>
@@ -33,7 +34,7 @@
                             {% endif %}
                         </div>
 
-                        <h6>Final Nomination Tallies:</h6>
+                        <h6>Final Tallies:</h6>
                         {% if poll_results %}
                             <div class="table-responsive">
                                 <table class="table table-bordered align-middle">
@@ -76,18 +77,38 @@
                     {% else %}
                         <p class="text-muted mb-0">No poll has been created for this club yet.</p>
                     {% endif %}
+
+                    <!-- Form to open a new poll if no poll exists or if current poll is closed -->
+                    {% if not latest_poll or not latest_poll.is_active %}
+                        <form method="POST" class="row g-2 mt-3 pt-3 border-top">
+                            <input type="hidden" name="action" value="create_poll">
+                            <div class="col-md-8">
+                                <input type="text" name="poll_title" class="form-control form-control-sm" placeholder="e.g. Next Month's Book Selection" required>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-sm btn-success w-100">+ Open New Poll</button>
+                            </div>
+                        </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Google Books API search and candidate selection -->
+        <!-- Search and select new book (Google Books API) -->
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-dark text-white">
-                    <h4 class="mb-0">2. Search & Select Active Book (Google Books API)</h4>
+                    <h4 class="mb-0">Search and select the winning book:</h4>
                 </div>
                 <div class="card-body">
                     
+                    <!-- UI Safeguard: Warning banner if poll is currently active -->
+                    {% if latest_poll and latest_poll.is_active %}
+                        <div class="alert alert-warning mb-4">
+                            <strong>Poll in Progress:</strong> Please click <strong>"Close Poll & Lock Votes"</strong> in Section 1 above before selecting a winning book.
+                        </div>
+                    {% endif %}
+
                     <!-- Book search form -->
                     <form method="POST" class="row g-3 mb-4">
                         <input type="hidden" name="action" value="search_books">
@@ -121,7 +142,13 @@
                                                 <input type="hidden" name="book_title" value="{{ book.title }}">
                                                 <input type="hidden" name="author" value="{{ book.author }}">
                                                 <input type="hidden" name="cover_url" value="{{ book.cover_url }}">
-                                                <button type="submit" class="btn btn-success btn-sm w-100">Select This Book</button>
+                                                
+                                                <!-- UI Safeguard: Disabled button while poll is active -->
+                                                <button type="submit" 
+                                                        class="btn btn-success btn-sm w-100" 
+                                                        {% if latest_poll and latest_poll.is_active %}disabled{% endif %}>
+                                                    Select This Book
+                                                </button>
                                             </form>
                                         </div>
                                     </div>
@@ -133,11 +160,11 @@
             </div>
         </div>
 
-        <!-- Active book chapter and target deadline setup -->
+        <!-- Active book details and chapter set up -->
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">3. Active Book Details & Chapter Setup</h4>
+                    <h4 class="mb-0">Setup book details:</h4>
                 </div>
                 <div class="card-body">
                     {% if active_book %}
@@ -149,9 +176,15 @@
                                     <div style="width: 70px; height: 100px; background: #ccc; display: flex; align-items: center; justify-content: center;" class="text-muted small">No Cover</div>
                                 {% endif %}
                             </div>
-                            <div class="col">
-                                <h5>Active Book: <strong>{{ active_book.title }}</strong></h5>
-                                <p class="mb-0 text-muted">Author: {{ active_book.author or 'Unknown' }}</p>
+                            <div class="col d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-1">Active Book: <strong>{{ active_book.title }}</strong></h5>
+                                    <p class="mb-0 text-muted">Author: {{ active_book.author or 'Unknown' }}</p>
+                                </div>
+                                <form method="POST" onsubmit="return confirm('Finish and archive this book? Member progress and discussions will become read-only.');">
+                                    <input type="hidden" name="action" value="end_book">
+                                    <button type="submit" class="btn btn-danger btn-sm">End Read & Archive Book</button>
+                                </form>
                             </div>
                         </div>
 
@@ -196,25 +229,30 @@
 
         <!-- Club member list -->
         <div class="col-md-12 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white">
-                    <h4 class="mb-0">Club Members ({{ members|length }})</h4>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group">
-                        {% for member in members %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ member.username }}</strong>
-                                    <span class="text-muted ms-2">({{ member.email }})</span>
-                                </div>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
+    <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">
+            <h4 class="mb-0">Club Members ({{ members|length }})</h4>
         </div>
-
+        <div class="card-body">
+            <ul class="list-group">
+                {% for m in members %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ m['username'] }}</strong>
+                            {% if m['id'] == club['admin_id'] %}
+                                <span class="badge bg-primary ms-2">Club Admin</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if m['id'] != session['user_id'] %}
+                            <form method="POST" action="{{ url_for('club.kick_member', club_id=club['id'], user_id=m['id']) }}" onsubmit="return confirm('Are you sure you want to kick {{ m['username'] }} from this club?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Kick Member</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -192,6 +192,26 @@ def setup_book_details(book_id, club_id, total_chapters, has_prologue, has_epilo
         (total_chapters, has_prologue, has_epilogue, target_deadline, book_id, club_id)
     )
     db.commit()
+
+def archive_active_book(club_id):
+    """
+    Sets the currently active book for a club to inactive.
+    """
+    db = get_db()
+    db.execute('UPDATE Books SET is_active = 0 WHERE club_id = ? AND is_active = 1', (club_id,))
+    db.commit()
+
+def create_poll(club_id, title):
+    """
+    Deactivates older polls for the club and starts a new active poll.
+    """
+    db = get_db()
+    db.execute('UPDATE BookPolls SET is_active = 0 WHERE club_id = ?', (club_id,))
+    db.execute(
+        'INSERT INTO BookPolls (club_id, title, is_active) VALUES (?, ?, 1)',
+        (club_id, title)
+    )
+    db.commit()
     
 def save_user_progress(user_id, book_id, highest_chapter):
     """

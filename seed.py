@@ -116,7 +116,7 @@ def seed_database():
     cursor.execute('''
         INSERT OR IGNORE INTO BookPolls (id, club_id, title, is_active)
         VALUES (?, ?, ?, ?)
-    ''', (1, 1, 'November 2026 Book Selection', 1))
+    ''', (1, 1, 'November 2026 Book Selection', 0))
 
     cursor.execute('''
         INSERT OR IGNORE INTO BookPolls (id, club_id, title, is_active)

@@ -89,11 +89,6 @@
     {% for m in members %}
     <li class="list-group-item d-flex justify-content-between">
       {{ m['username'] }}
-      {% if is_admin and m['id'] != session['user_id'] %}
-      <form method="POST" action="{{ url_for('club.kick_member', club_id=club['id'], user_id=m['id']) }}">
-        <button class="btn btn-sm btn-danger">Kick</button>
-      </form>
-      {% endif %}
     </li>
     {% endfor %}
   </ul>

@@ -13,6 +13,8 @@ from app.db import (
     get_active_book,
     get_club_members,
     save_user_progress,
+    archive_active_book,
+    create_poll
 )
 
 admin_bp = Blueprint('admin', __name__)
@@ -73,12 +75,11 @@ def vote_poll(club_id):
 @admin_bp.route('/clubs/<int:club_id>/manage', methods=['GET', 'POST'])
 def manage_club(club_id):
     """
-    Admin setup panel: Close Poll -> View Tallies -> Google Books Search -> Select Book -> Chapter Setup
+    Admin setup panel: Close/Open Polls -> View Tallies -> Google Books Search -> Select Book -> Chapter Setup -> End Book
     """
     if not _require_login():
         return redirect(url_for('auth.login'))
 
-    # Helper 1: Fetch club
     club = get_club_by_id(club_id)
 
     if not club or club['admin_id'] != session['user_id']:
@@ -99,7 +100,17 @@ def manage_club(club_id):
                 flash('The poll has closed! Voting is locked and final results are displayed.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 2. Search Google Books API (No DB changes here)
+        # 2. Create New Poll
+        elif action == 'create_poll':
+            poll_title = request.form.get('poll_title', '').strip()
+            if not poll_title:
+                flash('Please enter a title for the new poll.')
+            else:
+                create_poll(club_id, poll_title)
+                flash('New book poll created successfully!')
+            return redirect(url_for('admin.manage_club', club_id=club_id))
+
+        # 3. Search Google Books API
         elif action == 'search_books':
             search_query = request.form.get('search_query', '').strip()
             if not search_query:
@@ -132,20 +143,17 @@ def manage_club(club_id):
                 except Exception:
                     flash('Error fetching book results from Google Books API.')
 
-        # 3. Select Candidate Book
+        # 4. Select Candidate Book
         elif action == 'select_book':
-            # Check if an active poll is still open
             active_poll = get_active_poll(club_id)
             if active_poll:
                 flash('Voting is still open! You must close the active poll before selecting a winning book.')
                 return redirect(url_for('admin.manage_club', club_id=club_id))
 
-            # Extract the form data
             book_title = request.form.get('book_title', '').strip()
             author = request.form.get('author', '').strip()
             cover_url = request.form.get('cover_url', '').strip()
 
-            # Validate defined book_title
             if not book_title:
                 flash('Invalid book selection.')
                 return redirect(url_for('admin.manage_club', club_id=club_id))
@@ -154,7 +162,7 @@ def manage_club(club_id):
             flash('Active book set successfully! You can now configure its chapters and target deadline.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 4. Set Up Chapters & Target Deadline
+        # 5. Set Up Chapters & Target Deadline
         elif action == 'setup_book':
             book_id = request.form.get('book_id')
             try:
@@ -173,7 +181,13 @@ def manage_club(club_id):
             flash('Book details set up successfully!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-    # Helper calls for template data loading
+        # 6. End Active Book & Archive
+        elif action == 'end_book':
+            archive_active_book(club_id)
+            flash('The active book has been finished and moved to archives!')
+            return redirect(url_for('admin.manage_club', club_id=club_id))
+
+    # Data fetching for template
     latest_poll = get_latest_poll(club_id)
     poll_results = get_poll_results(latest_poll['id']) if latest_poll else []
     active_book = get_active_book(club_id)
