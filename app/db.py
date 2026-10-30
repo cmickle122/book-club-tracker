@@ -198,16 +198,13 @@ def save_user_progress(user_id, book_id, chapter_num, is_completed):
     Updates ChapterProgress status.
     """
     db = get_db()
-    if is_completed:
-        db.execute('''
-        INSERT INTO ChapterProgress (user_id, book_id, chapter_num, is_completed) VALUES (?, ?, ?, ?) 
-        ON CONFLICT(user_id, book_id, chapter_num) DO UPDATE SET is_completed = 1
-        ''', (user_id, book_id, chapter_num, is_completed))
-    else:
-        db.execute('''
-            DELETE FROM ChapterProgress WHERE user_id = ? AND book_id = ? AND chapter_num = ?
-            ''', (user_id, book_id, chapter_num)
-        )
+    db.execute('''
+        INSERT INTO UserBookProgress (user_id, book_id, highest_chapter_completed) 
+        VALUES (?, ?, ?) 
+        ON CONFLICT(user_id, book_id) 
+        DO UPDATE SET highest_chapter_completed = excluded.highest_chapter_completed,
+                      updated_at = CURRENT_TIMESTAMP
+    ''', (user_id, book_id, highest_chapter))
     db.commit()
 
 
@@ -217,7 +214,7 @@ def get_user_chapter_progress(user_id, book_id):
     Retrieves chapter progress for a user.
     """
     db = get_db()
-    return db.execute('''SELECT * FROM ChapterProgress WHERE user_id = ? AND book_id = ?
+    return db.execute('''SELECT * FROM UserBookProgress WHERE user_id = ? AND book_id = ?
     ''', (user_id, book_id)).fetchone()
 
 def get_poll_nominations(poll_id):
@@ -231,23 +228,26 @@ def get_user_completed_chapters(user_id, book_id):
     """
     Returns chapter completion count for progress bars.
     """
-    db = get_db()
-    row = db.execute(
-        'SELECT COUNT(*) AS total FROM ChapterProgress WHERE user_id = ? AND book_id = ? AND is_completed = 1',
-        (user_id, book_id)
-    ).fetchone()
-    return row['total'] if row else 0
+    max_ch = get_user_max_chapter(user_id, book_id)
+    if max_ch is None or max_ch < 0:
+        return 0
+    # Prologue (0) adds 1 completed unit if present
+    if has_prologue:
+        return max_ch + 1
+    return max_ch
 
 def get_user_max_chapter(user_id, book_id):
     """
     Returns the highest completed chapter to enforce spoiler locks.
     """
     db = get_db()
-    max_row = db.execute(
-        'SELECT MAX(chapter_num) as max_c FROM ChapterProgress WHERE user_id = ? AND book_id = ?',
+    row = db.execute(
+        'SELECT highest_chapter_completed FROM UserBookProgress WHERE user_id = ? AND book_id = ?',
         (user_id, book_id)
     ).fetchone()
-    return max_row['max_c'] if max_row and max_row['max_c'] is not None else 0
+    if row and row['highest_chapter_completed'] is not None:
+        return row['highest_chapter_completed']
+    return -1
 
 def add_discussion_post(club_id, book_id, chapter_num, user_id, content):
     """

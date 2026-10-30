@@ -193,9 +193,8 @@ def update_progress(club_id):
 
     # Extract book information from the request form
     book_id = request.form.get('book_id')
-    chapter_num = request.form.get('chapter_num')
-    is_completed = 1 if request.form.get('is_completed') else 0
+    highest_chapter = int(request.form.get('highest_chapter', -1))
 
-    save_user_progress(session['user_id'], book_id, chapter_num, is_completed)
+    save_user_progress(session['user_id'], book_id, highest_chapter)
 
     return redirect(url_for('club.view_club', club_id=club_id))

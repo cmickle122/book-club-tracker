@@ -179,6 +179,29 @@ def seed_database():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (3, 4, 'The Book Thief', 'Markus Zusak', '', 10, 1, 1, '2026-10-01', 0))
 
+    # 8. Seed chapter progress for active books using UserBookProgress
+    # Club 1 (Book 1: Dune) - Admin read to Chapter 2, Regular user read to Chapter 5
+    cursor.execute('''
+        INSERT OR IGNORE INTO UserBookProgress (user_id, book_id, highest_chapter_completed)
+        VALUES (?, ?, ?)
+    ''', (1, 1, 2))
+
+    cursor.execute('''
+        INSERT OR IGNORE INTO UserBookProgress (user_id, book_id, highest_chapter_completed)
+        VALUES (?, ?, ?)
+    ''', (2, 1, 5))
+
+    # Club 3 (Book 2: Pride and Prejudice) - User 4 read to Chapter 2, User 6 read to Chapter 5
+    cursor.execute('''
+        INSERT OR IGNORE INTO UserBookProgress (user_id, book_id, highest_chapter_completed)
+        VALUES (?, ?, ?)
+    ''', (4, 2, 2))
+
+    cursor.execute('''
+        INSERT OR IGNORE INTO UserBookProgress (user_id, book_id, highest_chapter_completed)
+        VALUES (?, ?, ?)
+    ''', (6, 2, 5))
+    
     conn.commit()
     conn.close()
     print("Database seeded successfully!")

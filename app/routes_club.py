@@ -37,30 +37,29 @@ def view_club(club_id):
         has_epilogue = 1 if active_book['has_epilogue'] else 0
 
         total_units = total_chapters + has_prologue + has_epilogue
-        completed = get_user_completed_chapters(session['user_id'], active_book['id'])
+        highest_ch = get_user_max_chapter(session['user_id'], active_book['id'])
+        completed = get_user_completed_chapters(session['user_id'], active_book['id'], has_prologue)
         pct = round((completed / total_units) * 100) if total_units > 0 else 0
 
-        my_progress = {'completed': completed, 'total': total_units, 'pct': pct}
+        my_progress = {
+            'completed': completed, 
+            'total': total_units, 
+            'pct': pct, 
+            'highest_chapter': highest_ch
+        }
 
         # 2. Build chapter list for discussion board links (0 = Prologue, 1..N = Chapters, N+1 = Epilogue)
         if has_prologue:
-            chapters.append(0)
+            chapters.append(0) 
         for ch in range(1, total_chapters + 1):
             chapters.append(ch)
         if has_epilogue:
-            chapters.append(total_chapters + 1)
+            chapters.append(total_chapters + 1) 
 
     active_poll = get_active_poll(club_id)
     nominations = get_poll_nominations(active_poll['id']) if active_poll else []
 
     members = get_club_members(club_id)
-
-    members_progress = {}
-    if active_book and my_progress['total'] > 0:
-        for m in members:
-            comp = get_user_completed_chapters(m['id'], active_book['id'])
-            p_pct = round((comp / my_progress['total']) * 100) if my_progress['total'] else 0
-            members_progress[m['id']] = {'pct': p_pct, 'completed': comp}
 
     is_admin = (club['admin_id'] == session['user_id'])
 
@@ -92,7 +91,7 @@ def view_discussion(club_id, chapter_num):
         flash('This book is archived. Read-only mode.')
         if request.method == 'POST':
             return redirect(url_for('club.view_discussion', club_id=club_id, chapter_num=chapter_num))
-
+    
     max_completed = get_user_max_chapter(session['user_id'], active_book['id'])
     is_admin = (club['admin_id'] == session['user_id'])
     if not is_admin and chapter_num > 1 and max_completed < (chapter_num - 1):

@@ -10,13 +10,33 @@
 
   {% if active_book %}
   <div class="card mb-4">
-    <div class="card-body d-flex">
+    <div class="card-body d-flex align-items-center">
       {% if active_book['cover_url'] %}<img src="{{ active_book['cover_url'] }}" style="height:150px" class="me-3">{% endif %}
-      <div>
+      <div class="w-100">
         <h4>{{ active_book['title'] }} by {{ active_book['author'] }}</h4>
-        <p>Deadline: {{ active_book['target_deadline'] }}</p>
-        <p>Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
-        <div class="progress"><div class="progress-bar" style="width: {{ my_progress['pct'] }}%"></div></div>
+        <p class="mb-1">Deadline: {{ active_book['target_deadline'] }}</p>
+        <p class="mb-1">Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
+        <div class="progress mb-3"><div class="progress-bar" style="width: {{ my_progress['pct'] }}%"></div></div>
+
+        <form method="POST" action="{{ url_for('admin.update_progress', club_id=club['id']) }}" class="row g-2 align-items-center">
+          <input type="hidden" name="book_id" value="{{ active_book['id'] }}">
+          <div class="col-auto">
+            <label for="highest_chapter" class="form-label mb-0 fw-bold">Update Progress:</label>
+          </div>
+          <div class="col-auto">
+            <select name="highest_chapter" id="highest_chapter" class="form-select form-select-sm">
+              <option value="-1" {% if my_progress['highest_chapter'] == -1 or my_progress['highest_chapter'] is none %}selected{% endif %}>Not Started</option>
+              {% for ch in chapters %}
+                <option value="{{ ch }}" {% if my_progress['highest_chapter'] == ch %}selected{% endif %}>
+                  {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-primary">Save Progress</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -42,7 +62,7 @@
   <ul class="list-group mb-3">
     {% for m in members %}
     <li class="list-group-item d-flex justify-content-between">
-      {{ m['username'] }} - {{ members_progress.get(m['id'], {'pct':0})['pct'] }}%
+      {{ m['username'] }}
       {% if is_admin and m['id'] != session['user_id'] %}
       <form method="POST" action="{{ url_for('club.kick_member', club_id=club['id'], user_id=m['id']) }}">
         <button class="btn btn-sm btn-danger">Kick</button>

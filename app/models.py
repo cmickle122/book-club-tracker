@@ -77,16 +77,15 @@ CREATE TABLE IF NOT EXISTS PollVotes (
     UNIQUE(poll_id, user_id)
 );
 
-CREATE TABLE IF NOT EXISTS ChapterProgress (
+CREATE TABLE IF NOT EXISTS UserBookProgress (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
-    chapter_num INTEGER NOT NULL,
-    is_completed INTEGER DEFAULT 1,
+    highest_chapter_completed INTEGER DEFAULT -1,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users (id),
     FOREIGN KEY (book_id) REFERENCES Books (id),
-    UNIQUE(user_id, book_id, chapter_num)
+    UNIQUE(user_id, book_id)
 );
 
 CREATE TABLE IF NOT EXISTS DiscussionPosts (
