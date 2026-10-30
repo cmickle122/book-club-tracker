@@ -6,6 +6,7 @@ from app.db import (
     get_club_members,
     get_user_chapter_progress,
     get_poll_nominations,
+    get_poll_results,
     get_user_completed_chapters,
     get_user_max_chapter,
     add_discussion_post,
@@ -59,7 +60,7 @@ def view_club(club_id):
             chapters.append(total_chapters + 1) 
 
     active_poll = get_active_poll(club_id)
-    nominations = get_poll_nominations(active_poll['id']) if active_poll else []
+    nominations = get_poll_results(active_poll['id']) if active_poll else []
 
     members = get_club_members(club_id)
 

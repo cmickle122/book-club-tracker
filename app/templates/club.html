@@ -58,23 +58,38 @@
 
   <!-- Voting Poll (only if there is NO active book) -->
   <h5>Active Poll: {{ active_poll['title'] }}</h5>
-  <ul class="list-group mb-4">
-    {% for n in nominations %}
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-          <strong>{{ n['title'] }}</strong> {% if n['author'] %}by {{ n['author'] }}{% endif %}
-          <span class="badge bg-secondary ms-2">{{ n['vote_count'] }} votes</span>
+  <div class="card mb-3 p-3 bg-light">
+      <h6 class="fw-bold mb-2">Nominate a Book for this Poll:</h6>
+      <form method="POST" action="{{ url_for('admin.nominate_book', club_id=club['id']) }}" class="row g-2">
+        <div class="col-md-5">
+          <input type="text" name="title" class="form-control form-control-sm" placeholder="Book Title *" required>
         </div>
-        <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
-          <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
-          <input type="hidden" name="nomination_id" value="{{ n['id'] }}">
-          <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
-        </form>
-      </li>
-    {% else %}
-      <li class="list-group-item text-muted">No nominations found for this poll.</li>
-    {% endfor %}
-  </ul>
+        <div class="col-md-4">
+          <input type="text" name="author" class="form-control form-control-sm" placeholder="Author (optional)">
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-sm btn-success w-100">+ Nominate Book</button>
+        </div>
+      </form>
+    </div>
+
+    <ul class="list-group mb-4">
+      {% for n in nominations %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ n['title'] }}</strong> {% if n['author'] %}by {{ n['author'] }}{% endif %}
+            <span class="badge bg-secondary ms-2">{{ n['vote_count'] }} votes</span>
+          </div>
+          <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
+            <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
+            <input type="hidden" name="nomination_id" value="{{ n['id'] }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
+          </form>
+        </li>
+      {% else %}
+        <li class="list-group-item text-muted">No nominations found for this poll.</li>
+      {% endfor %}
+    </ul>
 
   {% else %}
   <!-- No active read or poll available -->

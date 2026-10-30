@@ -160,6 +160,29 @@ def get_poll_results(poll_id):
         (poll_id,)
     ).fetchall()
     
+def get_pending_closed_poll(club_id):
+    """
+    Returns the most recent closed poll if no book has been created since that poll.
+    """
+    db = get_db()
+    latest_closed = db.execute(
+        'SELECT * FROM BookPolls WHERE club_id = ? AND is_active = 0 ORDER BY created_at DESC LIMIT 1',
+        (club_id,)
+    ).fetchone()
+
+    if not latest_closed:
+        return None
+
+    latest_book = db.execute(
+        'SELECT * FROM Books WHERE club_id = ? ORDER BY created_at DESC LIMIT 1',
+        (club_id,)
+    ).fetchone()
+
+    if not latest_book or latest_book['created_at'] < latest_closed['created_at']:
+        return latest_closed
+
+    return None
+
 def close_poll(poll_id, club_id):
     """
     Locks voting on a poll.
@@ -170,10 +193,11 @@ def close_poll(poll_id, club_id):
     
 def set_active_book(club_id, title, author, cover_url):
     """
-    Sets previous book to inactive, and new book to active.
+    Sets previous book & poll to "inactive", and the new book to "active".
     """
     db = get_db()
     db.execute('UPDATE Books SET is_active = 0 WHERE club_id = ?', (club_id,))
+    db.execute('UPDATE BookPolls SET is_active = 0 WHERE club_id = ?', (club_id,))
     db.execute(
         'INSERT INTO Books (club_id, title, author, cover_url, is_active) VALUES (?, ?, ?, ?, 1)',
         (club_id, title, author, cover_url)
@@ -297,6 +321,8 @@ def remove_club_member(user_id, club_id):
     db.commit()
 
 
+
+
 # Helper Functions used by Developer 2 & 3:
 def get_club_by_id(club_id):
     """
@@ -326,7 +352,7 @@ def get_active_poll(club_id):
     """
     db = get_db()
     return db.execute(
-        'SELECT id FROM BookPolls WHERE club_id = ? AND is_active = 1 LIMIT 1',
+        'SELECT * FROM BookPolls WHERE club_id = ? AND is_active = 1 LIMIT 1',
         (club_id,)
     ).fetchone()
 
