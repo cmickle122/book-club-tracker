@@ -1,12 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+import requests, os
 from app.db import (
     get_club_by_id,
     get_active_book,
     get_active_poll,
     get_club_members,
     get_user_chapter_progress,
-    get_poll_nominations,
-    get_poll_results,
+    get_poll_results,  # Updated: retrieves vote counts and cover_urls
     get_user_completed_chapters,
     get_user_max_chapter,
     add_discussion_post,
@@ -16,7 +16,7 @@ from app.db import (
 
 club_bp = Blueprint('club', __name__)
 
-@club_bp.route('/clubs/<int:club_id>')
+@club_bp.route('/clubs/<int:club_id>', methods=['GET', 'POST'])
 def view_club(club_id):
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
@@ -28,7 +28,7 @@ def view_club(club_id):
 
     active_book = get_active_book(club_id)
 
-    # 1. Initialize my_progress dict & chapters list expected by club.html
+    # Initialize my_progress dict & chapters list expected by club.html
     my_progress = {'completed': 0, 'total': 0, 'pct': 0}
     chapters = []
 
@@ -40,8 +40,6 @@ def view_club(club_id):
         total_units = total_chapters + has_prologue + has_epilogue
         completed = get_user_completed_chapters(session['user_id'], active_book['id'], has_prologue)
         pct = round((completed / total_units) * 100) if total_units > 0 else 0
-
-        # Fetch the exact highest chapter integer (-1 for Not Started, 0 for Prologue, 1..N for Chapters)
         highest_ch = get_user_max_chapter(session['user_id'], active_book['id'])
 
         my_progress = {
@@ -51,7 +49,6 @@ def view_club(club_id):
             'highest_chapter': highest_ch if highest_ch is not None else -1
         }
 
-        # 2. Build chapter list for discussion board links (0 = Prologue, 1..N = Chapters, N+1 = Epilogue)
         if has_prologue:
             chapters.append(0) 
         for ch in range(1, total_chapters + 1):
@@ -60,10 +57,57 @@ def view_club(club_id):
             chapters.append(total_chapters + 1) 
 
     active_poll = get_active_poll(club_id)
+    # Retrieve nominations with vote_count and cover_url
     nominations = get_poll_results(active_poll['id']) if active_poll else []
 
-    members = get_club_members(club_id)
+    # Handle Google Books API Search when submitting from club.html
+    search_results = []
+    search_query = ''
 
+    if request.method == 'POST' and request.form.get('action') == 'search_books':
+        search_query = request.form.get('search_query', '').strip()
+        if search_query:
+            try:
+                api_url = "https://www.googleapis.com/books/v1/volumes"
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                params = {'q': search_query, 'maxResults': 6}
+
+                api_key = os.environ.get('GOOGLE_BOOKS_API_KEY')
+                print("KEY LOADED:", bool(api_key))
+                if api_key:
+                    params['key'] = api_key
+
+                res = requests.get(api_url, params=params, headers=headers, timeout=10)
+                print("STATUS:", res.status_code)
+                print("BODY:", res.text[:500])
+
+                if res.status_code == 200:
+                    data = res.json()
+                    items = data.get('items', [])
+                    for item in items:
+                        volume_info = item.get('volumeInfo', {})
+                        title = volume_info.get('title', 'Unknown Title')
+                        authors_list = volume_info.get('authors', [])
+                        author = ", ".join(authors_list) if authors_list else 'Unknown Author'
+                        image_links = volume_info.get('imageLinks', {})
+                        cover_url = image_links.get('thumbnail') or image_links.get('smallThumbnail') or ''
+                        if cover_url.startswith('http://'):
+                            cover_url = 'https://' + cover_url[7:]
+
+                        search_results.append({
+                            'title': title,
+                            'author': author,
+                            'cover_url': cover_url
+                        })
+                    if not search_results:
+                        flash(f'No books found matching "{search_query}".')
+                else:
+                    flash(f'Google Books API error (status {res.status_code}).')
+            except Exception as e:
+                print("EXCEPTION:", repr(e))
+                flash(f'Error fetching results from Google Books API: {str(e)}')
+
+    members = get_club_members(club_id)
     is_admin = (club['admin_id'] == session['user_id'])
 
     return render_template(
@@ -75,7 +119,9 @@ def view_club(club_id):
         active_poll=active_poll,
         nominations=nominations,
         members=members,
-        is_admin=is_admin
+        is_admin=is_admin,
+        search_results=search_results,
+        search_query=search_query
     )
 
 @club_bp.route('/clubs/<int:club_id>/discussion/<int:chapter_num>', methods=['GET', 'POST'])
@@ -124,6 +170,12 @@ def leave_club(club_id):
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
+    club = get_club_by_id(club_id)
+
+    if club and club['admin_id'] == session['user_id']:
+        flash("Admins cannot leave their own club.")
+        return redirect(url_for('club.view_club', club_id=club_id))
+    
     remove_club_member(session['user_id'], club_id)
     flash('You left the club')
     return redirect(url_for('auth.dashboard'))

@@ -8,8 +8,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetChapter = parseInt(this.getAttribute('data-chapter-num') || '0');
 
             if (targetChapter > userProgress) {
+                const progressText = userProgress < 0 ? 'Not Started' : `Chapter ${userProgress}`;
+
                 const confirmAccess = confirm(
-                    `⚠️ SPOILER WARNING!\n\nYour current progress is Chapter ${userProgress}, but this thread discusses Chapter ${targetChapter}.\n\nClick OK to proceed to the discussion. Click Cancel to go back.`
+                    `⚠️ SPOILER WARNING!\n\nYour current progress is ${progressText}, but this thread discusses Chapter ${targetChapter}.\n\nClick OK to proceed to the discussion. Click Cancel to go back.`
                 );
                 if (!confirmAccess) {
                     e.preventDefault();

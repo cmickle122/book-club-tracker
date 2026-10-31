@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS Books (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     club_id INTEGER NOT NULL,
     title TEXT NOT NULL,
-    author TEXT,
+    author TEXT NOT NULL,
     cover_url TEXT,
     total_chapters INTEGER DEFAULT 0,
     has_prologue INTEGER DEFAULT 0,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS PollNominations (
     poll_id INTEGER NOT NULL,
     nominated_by INTEGER NOT NULL,
     title TEXT NOT NULL,
-    author TEXT,
+    author TEXT NOT NULL,
     cover_url TEXT,
     FOREIGN KEY (poll_id) REFERENCES BookPolls (id),
     FOREIGN KEY (nominated_by) REFERENCES Users (id)

@@ -19,15 +19,8 @@ main {
     cursor: pointer;
 }
 
-/* ==============================================================================
-# WRITE YOUR TEAM'S CUSTOM CSS HERE
-============================================================================== */
-/* Write your code here: */
-
-/* Example: Custom card shadow for book clubs */
 .club-card {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* To here. */

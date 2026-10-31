@@ -30,24 +30,28 @@ def _require_login():
 @admin_bp.route('/clubs/<int:club_id>/poll/nominate', methods=['POST'])
 def nominate_book(club_id):
     """
-    Allows the user to nominate a candidate book for an active poll.
+    Allows a user to nominate a candidate book for an active poll. 
+    Receives title, author, and cover_url from the Google Books search card.
     """
-    # Check if the user is logged in  
     if not _require_login():
         return redirect(url_for('auth.login'))
 
-    # Extract the information from the selected book from the request form.
     title = request.form.get('title', '').strip()
     author = request.form.get('author', '').strip()
     cover_url = request.form.get('cover_url', '').strip()
 
     poll = get_active_poll(club_id)
 
-    if poll and title:
-        add_nomination(poll['id'], session['user_id'], title, author, cover_url)
-        flash('Your book has been nominated!')
-    else:
-        flash('No active poll found or invalid book title.')
+    if not poll:
+        flash('No active poll found.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
+    if not title or not author:
+        flash('Both book title and author are required to nominate a book.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
+    add_nomination(poll['id'], session['user_id'], title, author, cover_url)
+    flash('Book nominated successfully!')
 
     return redirect(url_for('club.view_club', club_id=club_id))
 
@@ -76,7 +80,7 @@ def vote_poll(club_id):
 @admin_bp.route('/clubs/<int:club_id>/manage', methods=['GET', 'POST'])
 def manage_club(club_id):
     """
-    Admin setup panel: Manage Polls -> Google Books Search -> Select Book -> Chapter Setup -> End Book
+    Admin control panel: Manage Polls -> 1-Click Winner Selection -> Chapter Setup -> Archive Read
     """
     if not _require_login():
         return redirect(url_for('auth.login'))
@@ -86,9 +90,6 @@ def manage_club(club_id):
     if not club or club['admin_id'] != session['user_id']:
         flash('Access denied. Admin permissions required.')
         return redirect(url_for('club.view_club', club_id=club_id))
-
-    search_results = []
-    search_query = ''
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -111,66 +112,21 @@ def manage_club(club_id):
                 flash('New book poll created successfully!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 3. Search Google Books API
-        elif action == 'search_books':
-            search_query = request.form.get('search_query', '').strip()
-            if not search_query:
-                flash('Please enter a book title or keyword to search.')
-            else:
-                try:
-                    api_url = "https://www.googleapis.com/books/v1/volumes"
-                    headers = {'User-Agent': 'Mozilla/5.0'}
-                    res = requests.get(
-                        api_url, 
-                        params={'q': search_query, 'maxResults': 6}, 
-                        headers=headers,
-                        timeout=10
-                    )
-                    if res.status_code == 200:
-                        data = res.json()
-                        items = data.get('items', [])
-                        for item in items:
-                            volume_info = item.get('volumeInfo', {})
-                            title = volume_info.get('title', 'Unknown Title')
-                            authors_list = volume_info.get('authors', [])
-                            author = ", ".join(authors_list) if authors_list else 'Unknown Author'
-                            image_links = volume_info.get('imageLinks', {})
-                            cover_url = image_links.get('thumbnail') or image_links.get('smallThumbnail') or ''
-                            if cover_url.startswith('http://'):
-                                cover_url = 'https://' + cover_url[7:]
-                            
-                            search_results.append({
-                                'title': title,
-                                'author': author,
-                                'cover_url': cover_url
-                            })
-                        if not search_results:
-                            flash(f'No books found matching "{search_query}". Try another search term.')
-                    else:
-                        flash('Error fetching book results from Google Books API.')
-                except Exception:
-                    flash('Error fetching book results from Google Books API.')
-
-        # 4. Select Candidate Book (Google Books API only)
+        # 3. Select Candidate Book (1-Click selection from closed poll results)
         elif action == 'select_book':
-            active_poll = get_active_poll(club_id)
-            if active_poll:
-                flash('Voting is still open! You must close the active poll before selecting a winning book.')
-                return redirect(url_for('admin.manage_club', club_id=club_id))
-
             book_title = request.form.get('book_title', '').strip()
             author = request.form.get('author', '').strip()
             cover_url = request.form.get('cover_url', '').strip()
 
-            if not book_title:
-                flash('Invalid book selection.')
+            if not book_title or not author:
+                flash('Invalid book selection. Title and author are required.')
                 return redirect(url_for('admin.manage_club', club_id=club_id))
 
             set_active_book(club_id, book_title, author, cover_url)
             flash('Active book set successfully! Configure its chapters and target deadline below.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 5. Set Up / Adjust Chapters & Target Deadline
+        # 4. Set Up / Adjust Chapters & Target Deadline
         elif action == 'setup_book':
             book_id = request.form.get('book_id')
             try:
@@ -189,7 +145,7 @@ def manage_club(club_id):
             flash('Book details saved successfully!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 6. End Active Book & Archive
+        # 5. End Active Book & Archive
         elif action == 'end_book':
             archive_active_book(club_id)
             flash('The active book has been finished and moved to archives!')
@@ -219,9 +175,7 @@ def manage_club(club_id):
         pending_closed_poll=pending_closed_poll,
         poll_results=poll_results,
         active_book=active_book, 
-        members=members,
-        search_results=search_results,
-        search_query=search_query
+        members=members
     )
 
 @admin_bp.route('/clubs/<int:club_id>/progress/update', methods=['POST'])
