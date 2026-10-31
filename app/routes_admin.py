@@ -15,7 +15,8 @@ from app.db import (
     get_club_members,
     save_user_progress,
     archive_active_book,
-    create_poll
+    create_poll,
+    update_club_settings
 )
 
 admin_bp = Blueprint('admin', __name__)
@@ -36,23 +37,21 @@ def nominate_book(club_id):
     if not _require_login():
         return redirect(url_for('auth.login'))
 
+    if not is_club_member(session['user_id'], club_id):
+        flash('You must be a member of this club to nominate books.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
     title = request.form.get('title', '').strip()
     author = request.form.get('author', '').strip()
     cover_url = request.form.get('cover_url', '').strip()
 
     poll = get_active_poll(club_id)
-
-    if not poll:
-        flash('No active poll found.')
-        return redirect(url_for('club.view_club', club_id=club_id))
-
-    if not title or not author:
-        flash('Both book title and author are required to nominate a book.')
+    if not poll or not title or not author:
+        flash('Invalid nomination details.')
         return redirect(url_for('club.view_club', club_id=club_id))
 
     add_nomination(poll['id'], session['user_id'], title, author, cover_url)
     flash('Book nominated successfully!')
-
     return redirect(url_for('club.view_club', club_id=club_id))
 
 
@@ -65,7 +64,10 @@ def vote_poll(club_id):
     if not _require_login():
         return redirect(url_for('auth.login'))
 
-    # Extract nomination and poll ids from the request form
+    if not is_club_member(session['user_id'], club_id):
+        flash('You must be a member of this club to vote.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
     nomination_id = request.form.get('nomination_id')
     poll_id = request.form.get('poll_id')
 
@@ -94,7 +96,7 @@ def manage_club(club_id):
     if request.method == 'POST':
         action = request.form.get('action')
 
-        # 1. Close Active Poll
+        # Close Active Poll
         if action == 'close_poll':
             poll_id = request.form.get('poll_id')
             if poll_id:
@@ -102,7 +104,7 @@ def manage_club(club_id):
                 flash('The poll has closed! Voting is locked and final results are displayed.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 2. Create New Poll
+        # Create New Poll
         elif action == 'create_poll':
             poll_title = request.form.get('poll_title', '').strip()
             if not poll_title:
@@ -112,7 +114,7 @@ def manage_club(club_id):
                 flash('New book poll created successfully!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 3. Select Candidate Book (1-Click selection from closed poll results)
+        # Select Candidate Book (from closed poll results)
         elif action == 'select_book':
             book_title = request.form.get('book_title', '').strip()
             author = request.form.get('author', '').strip()
@@ -126,7 +128,7 @@ def manage_club(club_id):
             flash('Active book set successfully! Configure its chapters and target deadline below.')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 4. Set Up / Adjust Chapters & Target Deadline
+        # Set up and edit chapters & target deadline
         elif action == 'setup_book':
             book_id = request.form.get('book_id')
             try:
@@ -145,11 +147,28 @@ def manage_club(club_id):
             flash('Book details saved successfully!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
 
-        # 5. End Active Book & Archive
+        # End Active Book & Archive
         elif action == 'end_book':
             archive_active_book(club_id)
             flash('The active book has been finished and moved to archives!')
             return redirect(url_for('admin.manage_club', club_id=club_id))
+
+
+        # Update Club Details & Privacy Settings
+        elif action == 'update_club_details':
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            genre = request.form.get('genre', '').strip()
+            is_private = 1 if request.form.get('is_private') == '1' else 0
+            passcode = request.form.get('passcode', '').strip() if is_private else ''
+
+            if not name:
+                flash('Club name cannot be empty.')
+            else:
+                update_club_settings(club_id, name, description, genre, is_private, passcode)
+                flash('Club settings updated successfully!')
+            return redirect(url_for('admin.manage_club', club_id=club_id))
+
 
     active_book = get_active_book(club_id)
     active_poll = get_active_poll(club_id)

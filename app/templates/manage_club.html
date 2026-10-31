@@ -252,6 +252,57 @@
         </div>
         {% endif %}
 
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm border-secondary">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">⚙️ Edit Club Details & Privacy</h4>
+                    <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#editClubForm" aria-expanded="false">
+                        Toggle Form
+                    </button>
+                </div>
+                <div class="card-body collapse show" id="editClubForm">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="update_club_details">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Club Name *</label>
+                                <input type="text" name="name" class="form-control" value="{{ club['name'] }}" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Genre</label>
+                                <input type="text" name="genre" class="form-control" value="{{ club['genre'] or '' }}" placeholder="e.g. Sci-Fi, Mystery, Non-Fiction">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Club Description</label>
+                                <textarea name="description" class="form-control" rows="3" placeholder="Describe your book club's focus or rules...">{{ club['description'] or '' }}</textarea>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Privacy Setting</label>
+                                <select name="is_private" id="privacySelect" class="form-select">
+                                    <option value="0" {% if not club['is_private'] %}selected{% endif %}>Public (Anyone can join)</option>
+                                    <option value="1" {% if club['is_private'] %}selected{% endif %}>Private (Passcode required)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6" id="passcodeContainer" style="{% if not club['is_private'] %}display: none;{% endif %}">
+                                <label class="form-label fw-bold">Private Passcode *</label>
+                                <input type="text" name="passcode" id="passcodeField" class="form-control" value="{{ club['passcode'] or '' }}" placeholder="Enter join passcode">
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <button type="submit" class="btn btn-primary">Save Club Settings</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
         <!-- Club members list (always visible) -->
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">

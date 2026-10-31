@@ -19,4 +19,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    const privacySelect = document.getElementById('privacySelect');
+    const passcodeContainer = document.getElementById('passcodeContainer');
+    const passcodeField = document.getElementById('passcodeField');
+
+    if (privacySelect && passcodeContainer && passcodeField) {
+        privacySelect.addEventListener('change', function() {
+            if (this.value === '1') {
+                passcodeContainer.style.display = 'block';
+                passcodeField.setAttribute('required', 'required');
+            } else {
+                passcodeContainer.style.display = 'none';
+                passcodeField.removeAttribute('required');
+            }
+        });
+    }
 });

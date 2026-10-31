@@ -1,19 +1,22 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mt-4">
-  <!-- Title and Admin Button in a Flexbox Header -->
+  {% if not is_member %}
+  <div class="alert alert-warning show mb-3" role="alert">
+    You are not a member of this club. To become a member, click the Join Club button at the bottom of the page!
+  </div>
+  {% endif %}
+
+  <!-- Header with Title and Admin Panel Button -->
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">{{ club['name'] }}</h2>
     {% if is_admin %}
       <a href="{{ url_for('admin.manage_club', club_id=club['id']) }}" class="btn btn-primary">Manage Club</a>
     {% endif %}
   </div>
-  
   <p class="text-muted">{{ club['description'] }} | Genre: {{ club['genre'] }} | Admin: {{ club['admin_name'] }}</p>
 
-
-  <!-- Active read and chapter discussions -->
+  <!-- 1. Active read -->
   {% if active_book %}
   <div class="card mb-4 shadow-sm">
     <div class="card-body d-flex align-items-center">
@@ -23,100 +26,103 @@
       <div class="w-100">
         <h4>{{ active_book['title'] }} by {{ active_book['author'] }}</h4>
         <p class="mb-1">Deadline: {{ active_book['target_deadline'] or 'No deadline set' }}</p>
-        <p class="mb-1">Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
-        <div class="progress mb-3"><div class="progress-bar bg-success" style="width: {{ my_progress['pct'] }}%"></div></div>
+        
+        <!-- Progress Bar (ONLY for Members) -->
+        {% if is_member %}
+          <p class="mb-1">Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
+          <div class="progress mb-3"><div class="progress-bar bg-success" style="width: {{ my_progress['pct'] }}%"></div></div>
 
-        <form method="POST" action="{{ url_for('admin.update_progress', club_id=club['id']) }}" class="row g-2 align-items-center">
-          <input type="hidden" name="book_id" value="{{ active_book['id'] }}">
-          <div class="col-auto">
-            <label for="highest_chapter" class="form-label mb-0 fw-bold">Update Progress:</label>
-          </div>
-          <div class="col-auto">
-            <select name="highest_chapter" id="highest_chapter" class="form-select form-select-sm">
-              <option value="-1" {% if my_progress['highest_chapter'] == -1 or my_progress['highest_chapter'] is none %}selected{% endif %}>Not Started</option>
-              {% for ch in chapters %}
-                <option value="{{ ch }}" {% if my_progress['highest_chapter'] == ch %}selected{% endif %}>
-                  {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-auto">
-            <button type="submit" class="btn btn-sm btn-primary">Save Progress</button>
-          </div>
-        </form>
+          <form method="POST" action="{{ url_for('admin.update_progress', club_id=club['id']) }}" class="row g-2 align-items-center">
+            <input type="hidden" name="book_id" value="{{ active_book['id'] }}">
+            <div class="col-auto">
+              <label for="highest_chapter" class="form-label mb-0 fw-bold">Update Progress:</label>
+            </div>
+            <div class="col-auto">
+              <select name="highest_chapter" id="highest_chapter" class="form-select form-select-sm">
+                <option value="-1" {% if my_progress['highest_chapter'] == -1 or my_progress['highest_chapter'] is none %}selected{% endif %}>Not Started</option>
+                {% for ch in chapters %}
+                  <option value="{{ ch }}" {% if my_progress['highest_chapter'] == ch %}selected{% endif %}>
+                    {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-sm btn-primary">Save Progress</button>
+            </div>
+          </form>
+        {% endif %}
       </div>
     </div>
   </div>
 
-  <h5>Chapter Discussions</h5>
+  <h5>Chapter Discussions (spoiler-protected)</h5>
   <div class="list-group mb-4">
     {% for ch in chapters %}
       <a href="{{ url_for('club.view_discussion', club_id=club['id'], chapter_num=ch) }}" 
          class="list-group-item list-group-item-action spoiler-thread-link"
-         data-user-progress="{{ my_progress['highest_chapter'] }}"
+         data-user-progress="{{ my_progress['highest_chapter'] if is_member else -1 }}"
          data-chapter-num="{{ ch }}">
         {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
       </a>
     {% endfor %}
   </div>
 
-  <!-- Voting Poll (only if there is NO active book) -->
+  <!-- 2. Active Voting Poll -->
   {% elif active_poll %}
-
   <div class="card mb-4 shadow-sm border-primary">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Active Poll: {{ active_poll['title'] }}</h5>
-      <span class="badge bg-light text-dark">Voting Live</span>
+      <span class="badge bg-success">Voting Live</span>
     </div>
     <div class="card-body">
 
-      <!-- Google Books API search form -->
-      <h6 class="fw-bold mb-2">Search for a book to nominate:</h6>
-      <form method="POST" class="row g-2 mb-3">
-        <input type="hidden" name="action" value="search_books">
-        <div class="col-md-9">
-          <input type="text" name="search_query" class="form-control form-control-sm" placeholder="Search by title or author..." value="{{ search_query }}">
-        </div>
-        <div class="col-md-3">
-          <button type="submit" class="btn btn-sm btn-primary w-100">Search Books</button>
-        </div>
-      </form>
+      <!-- Google Books API Search & Nomination Form (ONLY for Members) -->
+      {% if is_member %}
+        <h6 class="fw-bold mb-2">Search Google Books to Nominate a Book:</h6>
+        <form method="POST" class="row g-2 mb-3">
+          <input type="hidden" name="action" value="search_books">
+          <div class="col-md-9">
+            <input type="text" name="search_query" class="form-control form-control-sm" placeholder="Search by title or author..." value="{{ search_query }}">
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-sm btn-primary w-100">Search Books</button>
+          </div>
+        </form>
 
-      <!-- Google Books search results cards -->
-      {% if search_results %}
-        <h6 class="text-muted mb-2">Search Results:</h6>
-        <div class="row mb-4">
-          {% for book in search_results %}
-            <div class="col-md-4 col-lg-3 mb-3">
-              <div class="card h-100 text-center shadow-sm">
-                <div class="p-2" style="height: 140px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
-                  {% if book.cover_url %}
-                    <img src="{{ book.cover_url }}" class="img-fluid" style="max-height: 120px;" alt="{{ book.title }}">
-                  {% else %}
-                    <span class="text-muted small">No Cover</span>
-                  {% endif %}
-                </div>
-                <div class="card-body d-flex flex-column p-2">
-                  <h6 class="card-title text-truncate small fw-bold" title="{{ book.title }}">{{ book.title }}</h6>
-                  <p class="card-text text-muted small text-truncate mb-2">{{ book.author }}</p>
-                  <form method="POST" action="{{ url_for('admin.nominate_book', club_id=club['id']) }}" class="mt-auto">
-                    <input type="hidden" name="title" value="{{ book.title }}">
-                    <input type="hidden" name="author" value="{{ book.author }}">
-                    <input type="hidden" name="cover_url" value="{{ book.cover_url }}">
-                    <button type="submit" class="btn btn-success btn-sm w-100">Nominate This Book</button>
-                  </form>
+        {% if search_results %}
+          <h6 class="text-muted mb-2">Search Results:</h6>
+          <div class="row mb-4">
+            {% for book in search_results %}
+              <div class="col-md-4 col-lg-3 mb-3">
+                <div class="card h-100 text-center shadow-sm">
+                  <div class="p-2" style="height: 140px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                    {% if book.cover_url %}
+                      <img src="{{ book.cover_url }}" class="img-fluid" style="max-height: 120px;" alt="{{ book.title }}">
+                    {% else %}
+                      <span class="text-muted small">No Cover</span>
+                    {% endif %}
+                  </div>
+                  <div class="card-body d-flex flex-column p-2">
+                    <h6 class="card-title text-truncate small fw-bold" title="{{ book.title }}">{{ book.title }}</h6>
+                    <p class="card-text text-muted small text-truncate mb-2">{{ book.author }}</p>
+                    <form method="POST" action="{{ url_for('admin.nominate_book', club_id=club['id']) }}" class="mt-auto">
+                      <input type="hidden" name="title" value="{{ book.title }}">
+                      <input type="hidden" name="author" value="{{ book.author }}">
+                      <input type="hidden" name="cover_url" value="{{ book.cover_url }}">
+                      <button type="submit" class="btn btn-success btn-sm w-100">+ Nominate This Book</button>
+                    </form>
+                  </div>
                 </div>
               </div>
-            </div>
-          {% endfor %}
-        </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <hr>
       {% endif %}
 
-      <hr>
-
-      <!-- Current nominations and voting list -->
-      <h6 class="fw-bold mb-3">Nominated Books:</h6>
+      <!-- Nominated Books & Voting List (Visible to all, voting buttons ONLY for members) -->
+      <h6 class="fw-bold mb-3">Nominated Books in Poll:</h6>
       {% if nominations %}
         <div class="list-group mb-2">
           {% for n in nominations %}
@@ -136,42 +142,56 @@
                 </div>
               </div>
 
-              <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
-                <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
-                <input type="hidden" name="nomination_id" value="{{ n['id'] }}">
-                <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
-              </form>
+              <!-- Vote Button (ONLY for Members) -->
+              {% if is_member %}
+                <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
+                  <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
+                  <input type="hidden" name="nomination_id" value="{{ n['id'] }}">
+                  <button type="submit" class="btn btn-sm btn-outline-primary">Vote</button>
+                </form>
+              {% endif %}
             </div>
           {% endfor %}
         </div>
       {% else %}
-        <p class="text-muted">No nominations submitted yet. Use the search bar above to find and nominate a book!</p>
+        <p class="text-muted">No nominations submitted yet.</p>
       {% endif %}
 
     </div>
   </div>
 
-  <!-- No active read or poll -->
+  <!-- 3. Fallback alert -->
   {% else %}
   <div class="alert alert-secondary mb-4">
     No active book or voting poll right now.
   </div>
   {% endif %}
 
-  <!-- Members List -->
-  <h5>Members</h5>
-  <ul class="list-group mb-3">
-    {% for m in members %}
-    <li class="list-group-item d-flex justify-content-between">
-      {{ m['username'] }}
-    </li>
-    {% endfor %}
-  </ul>
-  
-  {% if not is_admin %}
-    <form method="POST" action="{{ url_for('club.leave_club', club_id=club['id']) }}">
-      <button class="btn btn-outline-danger">Leave Club</button>
-    </form>
+  <!-- Members List (ONLY visible to Members) -->
+  {% if is_member %}
+    <h5>Members</h5>
+    <ul class="list-group mb-4">
+      {% for m in members %}
+      <li class="list-group-item d-flex justify-content-between">
+        {{ m['username'] }}
+      </li>
+      {% endfor %}
+    </ul>
   {% endif %}
+
+  <!-- Action Buttons: Join for Non-Members, Leave for Non-Admin Members -->
+  <div class="mb-4">
+    {% if not is_member %}
+      {% if not club['is_private'] %}
+        <form method="POST" action="{{ url_for('auth.join_club', club_id=club['id']) }}">
+          <button type="submit" class="btn btn-success">Join Club</button>
+        </form>
+      {% endif %}
+    {% elif not is_admin %}
+      <form method="POST" action="{{ url_for('club.leave_club', club_id=club['id']) }}">
+        <button class="btn btn-outline-danger">Leave Club</button>
+      </form>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

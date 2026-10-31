@@ -99,14 +99,13 @@ def insert_club(name, description, genre, is_private, passcode, admin_id):
     cur = db.execute('''
         INSERT INTO BookClubs (name, description, genre, is_private, passcode, admin_id)
         VALUES (?, ?, ?, ?, ?, ?)
-    ''', (name, description, genre, is_private, passcode, session['user_id']))
+    ''', (name, description, genre, is_private, passcode, admin_id))  # FIXED: Changed session['user_id'] to admin_id
         
     club_id = cur.lastrowid
     db.execute('INSERT INTO ClubMemberships (user_id, club_id) VALUES (?, ?)',
         (admin_id, club_id))
     db.commit()
     return club_id
-    
 
 # Developer 2's Helper Functions:  
 def add_nomination(poll_id, user_id, title, author, cover_url):
@@ -251,6 +250,18 @@ def save_user_progress(user_id, book_id, highest_chapter):
     ''', (user_id, book_id, highest_chapter))
     db.commit()
 
+def update_club_settings(club_id, name, description, genre, is_private, passcode):
+    """
+    Updates a club's title, description, genre, and privacy settings.
+    """
+    db = get_db()
+    db.execute('''
+        UPDATE BookClubs
+        SET name = ?, description = ?, genre = ?, is_private = ?, passcode = ?
+        WHERE id = ?
+    ''', (name, description, genre, is_private, passcode, club_id))
+    db.commit()
+
 
 # Developer 3's Helper Functions:
 def get_user_chapter_progress(user_id, book_id):
@@ -275,7 +286,6 @@ def get_user_completed_chapters(user_id, book_id, has_prologue=0):
     max_ch = get_user_max_chapter(user_id, book_id)
     if max_ch is None or max_ch < 0:
         return 0
-    # Prologue (0) adds 1 completed unit if present
     if has_prologue:
         return max_ch + 1
     return max_ch

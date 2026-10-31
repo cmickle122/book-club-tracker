@@ -3,18 +3,7 @@
 {% block content %}
 <div class="container mt-4">
   <h2>Search Clubs</h2>
-  <p class="text-muted">Find by name, genre, or description. Public vs Private shown.</p>
-
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      {% for m in messages %}
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-          {{ m }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+  <p class="text-muted">Find by name, genre, or description.</p>
 
   <form method="GET" action="{{ url_for('auth.search_clubs') }}" class="row g-2 mb-4">
     <div class="col-md-8">
@@ -30,12 +19,12 @@
       <div class="col-md-6 mb-3">
         <div class="card h-100 shadow-sm">
           <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <h5>{{ club['name'] }}</h5>
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="mb-0 text-truncate me-2">{{ club['name'] }}</h5>
               {% if club['is_private'] %}
-                <span class="badge bg-warning text-dark">Private</span>
+                <span class="badge bg-warning text-dark flex-shrink-0 align-self-start">Private</span>
               {% else %}
-                <span class="badge bg-success">Public</span>
+                <span class="badge bg-success flex-shrink-0 align-self-start">Public</span>
               {% endif %}
             </div>
             <p class="text-muted"><small>{{ club['genre'] or 'General' }} • {{ club['description'][:120] }}</small></p>

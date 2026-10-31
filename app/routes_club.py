@@ -6,11 +6,12 @@ from app.db import (
     get_active_poll,
     get_club_members,
     get_user_chapter_progress,
-    get_poll_results,  # Updated: retrieves vote counts and cover_urls
+    get_poll_results, 
     get_user_completed_chapters,
     get_user_max_chapter,
     add_discussion_post,
     get_discussion_posts,
+    is_club_member,
     remove_club_member
 )
 
@@ -23,12 +24,18 @@ def view_club(club_id):
 
     club = get_club_by_id(club_id)
     if not club:
-        flash('Club not found')
+        flash('Club not found.')
         return redirect(url_for('auth.dashboard'))
+
+    is_member = is_club_member(session['user_id'], club_id)
+    is_admin = (club['admin_id'] == session['user_id'])
+
+    if club['is_private'] and not is_member:
+        flash('Access Denied: You cannot view a private club. You must join with a passcode to view its content.')
+        return redirect(url_for('auth.search_clubs'))
 
     active_book = get_active_book(club_id)
 
-    # Initialize my_progress dict & chapters list expected by club.html
     my_progress = {'completed': 0, 'total': 0, 'pct': 0}
     chapters = []
 
@@ -38,16 +45,19 @@ def view_club(club_id):
         has_epilogue = 1 if active_book['has_epilogue'] else 0
 
         total_units = total_chapters + has_prologue + has_epilogue
-        completed = get_user_completed_chapters(session['user_id'], active_book['id'], has_prologue)
-        pct = round((completed / total_units) * 100) if total_units > 0 else 0
-        highest_ch = get_user_max_chapter(session['user_id'], active_book['id'])
+        
+        # Calculate reading progress metrics ONLY for active members
+        if is_member:
+            completed = get_user_completed_chapters(session['user_id'], active_book['id'], has_prologue)
+            pct = round((completed / total_units) * 100) if total_units > 0 else 0
+            highest_ch = get_user_max_chapter(session['user_id'], active_book['id'])
 
-        my_progress = {
-            'completed': completed, 
-            'total': total_units, 
-            'pct': pct, 
-            'highest_chapter': highest_ch if highest_ch is not None else -1
-        }
+            my_progress = {
+                'completed': completed, 
+                'total': total_units, 
+                'pct': pct, 
+                'highest_chapter': highest_ch if highest_ch is not None else -1
+            }
 
         if has_prologue:
             chapters.append(0) 
@@ -57,14 +67,13 @@ def view_club(club_id):
             chapters.append(total_chapters + 1) 
 
     active_poll = get_active_poll(club_id)
-    # Retrieve nominations with vote_count and cover_url
     nominations = get_poll_results(active_poll['id']) if active_poll else []
 
-    # Handle Google Books API Search when submitting from club.html
+    # Handle Google Books API Search when submitting from club.html (Members Only)
     search_results = []
     search_query = ''
 
-    if request.method == 'POST' and request.form.get('action') == 'search_books':
+    if request.method == 'POST' and request.form.get('action') == 'search_books' and is_member:
         search_query = request.form.get('search_query', '').strip()
         if search_query:
             try:
@@ -108,7 +117,6 @@ def view_club(club_id):
                 flash(f'Error fetching results from Google Books API: {str(e)}')
 
     members = get_club_members(club_id)
-    is_admin = (club['admin_id'] == session['user_id'])
 
     return render_template(
         'club.html',
@@ -120,6 +128,7 @@ def view_club(club_id):
         nominations=nominations,
         members=members,
         is_admin=is_admin,
+        is_member=is_member,
         search_results=search_results,
         search_query=search_query
     )
@@ -134,6 +143,10 @@ def view_discussion(club_id, chapter_num):
     if not club or not active_book:
         flash('Club or active book not found')
         return redirect(url_for('auth.dashboard'))
+
+    if club['is_private'] and not is_club_member(session['user_id'], club_id):
+        flash('Access Denied: You cannot view a private club. You must join with a passcode to view its content.')
+        return redirect(url_for('auth.search_clubs'))
 
     if active_book['is_active'] == 0:
         flash('This book is archived. Read-only mode.')
@@ -171,13 +184,20 @@ def leave_club(club_id):
         return redirect(url_for('auth.login'))
 
     club = get_club_by_id(club_id)
+    if not club:
+        flash('Club not found.')
+        return redirect(url_for('auth.dashboard'))
 
-    if club and club['admin_id'] == session['user_id']:
-        flash("Admins cannot leave their own club.")
+    if club['admin_id'] == session['user_id']:
+        flash('Admins cannot leave their own club.')
         return redirect(url_for('club.view_club', club_id=club_id))
-    
+
+    if not is_club_member(session['user_id'], club_id):
+        flash('You are not a member of this club.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
     remove_club_member(session['user_id'], club_id)
-    flash('You left the club')
+    flash('You left the club.')
     return redirect(url_for('auth.dashboard'))
 
 @club_bp.route('/clubs/<int:club_id>/kick/<int:user_id>', methods=['POST'])
