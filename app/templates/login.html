@@ -8,17 +8,6 @@
         <div class="card-body p-4">
           <h2 class="mb-3">Login</h2>
 
-          {% with messages = get_flashed_messages() %}
-            {% if messages %}
-              {% for m in messages %}
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                  {{ m }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-
           <form method="POST" action="{{ url_for('auth.login') }}">
             <div class="mb-3">
               <label class="form-label">Email</label>

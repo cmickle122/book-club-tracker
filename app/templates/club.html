@@ -69,14 +69,19 @@
   </div>
 
   <!-- 2. Active Voting Poll -->
-  {% elif active_poll %}
-  <div class="card mb-4 shadow-sm border-primary">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Active Poll: {{ active_poll['title'] }}</h5>
-      <span class="badge bg-success">Voting Live</span>
+  {% elif active_poll or pending_closed_poll %}
+  <div class="card mb-4 shadow-sm {% if active_poll %}border-primary{% else %}border-dark{% endif %}">
+    <div class="card-header {% if active_poll %}bg-primary{% else %}bg-dark{% endif %} text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">{% if active_poll %}Active Poll: {{ active_poll['title'] }}{% else %}Poll Results: {{ pending_closed_poll['title'] }}{% endif %}</h5>
+      {% if active_poll %}
+        <span class="badge bg-success">Voting Live</span>
+      {% else %}
+        <span class="badge bg-secondary">Poll Closed</span>
+      {% endif %}
     </div>
     <div class="card-body">
 
+      {% if active_poll %}
       <!-- Google Books API Search & Nomination Form (ONLY for Members) -->
       {% if is_member %}
         <h6 class="fw-bold mb-2">Search Google Books to Nominate a Book:</h6>
@@ -120,13 +125,18 @@
         {% endif %}
         <hr>
       {% endif %}
+      {% else %}
+        <div class="alert alert-info mb-3">
+          Voting has closed for this poll. Final results are displayed below while waiting for the admin to select and configure the winning book.
+        </div>
+      {% endif %}
 
       <!-- Nominated Books & Voting List (Visible to all, voting buttons ONLY for members) -->
-      <h6 class="fw-bold mb-3">Nominated Books in Poll:</h6>
+      <h6 class="fw-bold mb-3">{% if pending_closed_poll %}Final Poll Results:{% else %}Nominated Books in Poll:{% endif %}</h6>
       {% if nominations %}
         <div class="list-group mb-2">
           {% for n in nominations %}
-            <div class="list-group-item d-flex align-items-center justify-content-between p-2">
+            <div class="list-group-item d-flex align-items-center justify-content-between p-2 {% if pending_closed_poll and loop.first %}list-group-item-success{% endif %}">
               <div class="d-flex align-items-center">
                 {% if n['cover_url'] %}
                   <img src="{{ n['cover_url'] }}" style="height: 65px; width: 45px; object-fit: cover;" class="me-3 rounded shadow-sm" alt="Cover">
@@ -134,7 +144,12 @@
                   <div style="height: 65px; width: 45px; background: #e9ecef;" class="me-3 rounded d-flex align-items-center justify-content-center text-muted small">No Cover</div>
                 {% endif %}
                 <div>
-                  <h6 class="mb-0 fw-bold">{{ n['title'] }}</h6>
+                  <h6 class="mb-0 fw-bold">
+                    {{ n['title'] }}
+                    {% if pending_closed_poll and loop.first %}
+                      <span class="badge bg-success ms-2">WINNER / Top Vote</span>
+                    {% endif %}
+                  </h6>
                   <small class="text-muted">by {{ n['author'] or 'Unknown' }}</small>
                   <div>
                     <span class="badge bg-secondary mt-1">{{ n['vote_count'] }} votes</span>
@@ -143,7 +158,7 @@
               </div>
 
               <!-- Vote Button (ONLY for Members) -->
-              {% if is_member %}
+              {% if active_poll and is_member %}
                 <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
                   <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
                   <input type="hidden" name="nomination_id" value="{{ n['id'] }}">
@@ -154,7 +169,7 @@
           {% endfor %}
         </div>
       {% else %}
-        <p class="text-muted">No nominations submitted yet.</p>
+        <p class="text-muted">No nominations submitted for this poll.</p>
       {% endif %}
 
     </div>

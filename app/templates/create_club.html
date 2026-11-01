@@ -9,14 +9,6 @@
           <h2 class="mb-3">Create New Book Club</h2>
           <p class="text-muted">You will automatically become admin and member.</p>
 
-          {% with messages = get_flashed_messages() %}
-            {% if messages %}
-              {% for m in messages %}
-                <div class="alert alert-warning">{{ m }}</div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-
           <form method="POST" action="{{ url_for('auth.create_club') }}">
             <div class="mb-3">
               <label class="form-label">Club Name *</label>
@@ -24,13 +16,13 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="3" placeholder="What do you read?"></textarea>
+              <label class="form-label">Description *</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="What do you read?" required></textarea>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Genre</label>
-              <input name="genre" class="form-control" placeholder="e.g. Fiction, Mystery, Sci-Fi">
+              <label class="form-label">Genre *</label>
+              <input name="genre" class="form-control" placeholder="e.g. Fiction, Mystery, Sci-Fi" required>
             </div>
 
             <div class="form-check mb-3">

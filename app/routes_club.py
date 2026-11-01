@@ -4,6 +4,7 @@ from app.db import (
     get_club_by_id,
     get_active_book,
     get_active_poll,
+    get_pending_closed_poll,
     get_club_members,
     get_user_chapter_progress,
     get_poll_results, 
@@ -30,9 +31,9 @@ def view_club(club_id):
     is_member = is_club_member(session['user_id'], club_id)
     is_admin = (club['admin_id'] == session['user_id'])
 
-    if club['is_private'] and not is_member:
-        flash('Access Denied: You cannot view a private club. You must join with a passcode to view its content.')
-        return redirect(url_for('auth.search_clubs'))
+    if not is_club_member(session['user_id'], club_id):
+        flash('Join this club to view its discussions.')
+        return redirect(url_for('club.view_club', club_id=club_id))
 
     active_book = get_active_book(club_id)
 
@@ -67,7 +68,15 @@ def view_club(club_id):
             chapters.append(total_chapters + 1) 
 
     active_poll = get_active_poll(club_id)
-    nominations = get_poll_results(active_poll['id']) if active_poll else []
+    pending_closed_poll = None
+    nominations = []
+
+    if active_poll:
+        nominations = get_poll_results(active_poll['id'])
+    elif not active_book:
+        pending_closed_poll = get_pending_closed_poll(club_id)
+        if pending_closed_poll:
+            nominations = get_poll_results(pending_closed_poll['id'])
 
     # Handle Google Books API Search when submitting from club.html (Members Only)
     search_results = []
@@ -82,13 +91,10 @@ def view_club(club_id):
                 params = {'q': search_query, 'maxResults': 6}
 
                 api_key = os.environ.get('GOOGLE_BOOKS_API_KEY')
-                print("KEY LOADED:", bool(api_key))
                 if api_key:
                     params['key'] = api_key
 
                 res = requests.get(api_url, params=params, headers=headers, timeout=10)
-                print("STATUS:", res.status_code)
-                print("BODY:", res.text[:500])
 
                 if res.status_code == 200:
                     data = res.json()
@@ -125,6 +131,7 @@ def view_club(club_id):
         my_progress=my_progress,
         chapters=chapters,
         active_poll=active_poll,
+        pending_closed_poll=pending_closed_poll,
         nominations=nominations,
         members=members,
         is_admin=is_admin,

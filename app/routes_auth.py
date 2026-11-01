@@ -65,6 +65,10 @@ def register():
             flash('All fields required')
             return render_template('register.html')
 
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.')
+            return render_template('register.html')
+
         exists = get_user_by_username_or_email(username, email)
         if exists:
             flash('Email or username already taken')
@@ -98,7 +102,6 @@ def search_clubs():
 
 @auth_bp.route('/clubs/create', methods=['GET', 'POST'])
 def create_club():
-    """DEVELOPER 1: Create New Book Club"""
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
@@ -109,12 +112,15 @@ def create_club():
         is_private = 1 if request.form.get('is_private') else 0
         passcode = request.form.get('passcode','').strip() if is_private else None
 
-        if not name:
-            flash('Club name required')
+        if not name or not description or not genre:
+            flash('Club name, description, and genre are all required.')
+            return render_template('create_club.html')
+
+        if is_private and not passcode:
+            flash('Private clubs require a passcode.')
             return render_template('create_club.html')
 
         insert_club(name, description, genre, is_private, passcode, session['user_id'])
-
         return redirect(url_for('auth.dashboard'))
 
     return render_template('create_club.html')

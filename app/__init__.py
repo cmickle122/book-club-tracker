@@ -3,7 +3,7 @@ from flask import Flask
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['DATABASE'] = os.path.join(app.root_path, '..', 'bookclub.db')
 
     from app.routes_auth import auth_bp

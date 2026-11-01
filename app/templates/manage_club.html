@@ -40,7 +40,7 @@
                             </button>
                             
                             <!-- Archiving the book -->
-                            <form method="POST" class="d-inline" onsubmit="return confirm('Finish and archive this book? Member progress and discussions will become read-only.');">
+                            <form method="POST" class="d-inline" onsubmit="return confirm('Finish and archive this book?');">
                                 <input type="hidden" name="action" value="end_book">
                                 <button type="submit" class="btn btn-danger btn-sm">
                                     End Read & Archive Book
@@ -271,13 +271,13 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Genre</label>
-                                <input type="text" name="genre" class="form-control" value="{{ club['genre'] or '' }}" placeholder="e.g. Sci-Fi, Mystery, Non-Fiction">
+                                <label class="form-label fw-bold">Genre *</label>
+                                <input type="text" name="genre" class="form-control" value="{{ club['genre'] or '' }}" placeholder="e.g. Sci-Fi, Mystery, Non-Fiction" required>
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label fw-bold">Club Description</label>
-                                <textarea name="description" class="form-control" rows="3" placeholder="Describe your book club's focus or rules...">{{ club['description'] or '' }}</textarea>
+                                <label class="form-label fw-bold">Club Description *</label>
+                                <textarea name="description" class="form-control" rows="3" placeholder="Describe your book club's focus or rules..." required>{{ club['description'] or '' }}</textarea>
                             </div>
 
                             <div class="col-md-6">

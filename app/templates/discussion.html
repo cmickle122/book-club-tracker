@@ -8,10 +8,13 @@
     {% elif chapter_num > active_book['total_chapters'] %}
       Epilogue Discussion
     {% else %}
-      Chapter {{ chapter_num }} Discussion</h3>
+      Chapter {{ chapter_num }} Discussion
     {% endif %}
   </h3>
-  {% if is_archived %}<div class="alert alert-warning">This book is archived. Read-only mode.</div>{% endif %}
+  
+  {% if is_archived %}
+  <div class="alert alert-warning">This book is archived. Read-only mode.</div>
+  {% endif %}
 
   {% for p in posts %}
     <div class="card mb-2"><div class="card-body"><strong>{{ p['username'] }}</strong> <small>{{ p['created_at'] }}</small><p>{{ p['content'] }}</p></div></div>

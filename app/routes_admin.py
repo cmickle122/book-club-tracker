@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 import requests
 from app.db import (
+    is_club_member,
     get_active_poll,
     add_nomination,
     record_vote,
@@ -68,10 +69,18 @@ def vote_poll(club_id):
         flash('You must be a member of this club to vote.')
         return redirect(url_for('club.view_club', club_id=club_id))
 
-    nomination_id = request.form.get('nomination_id')
-    poll_id = request.form.get('poll_id')
+    poll = get_active_poll(club_id)
+    if not poll:
+        flash('Voting is closed for this poll.')
+        return redirect(url_for('club.view_club', club_id=club_id))
 
-    if record_vote(poll_id, nomination_id, session['user_id']):
+    nomination_id = request.form.get('nomination_id', type=int)
+    valid_ids = [n['id'] for n in get_poll_results(poll['id'])]
+    if nomination_id not in valid_ids:
+        flash('Invalid nomination.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
+    if record_vote(poll['id'], nomination_id, session['user_id']):
         flash('Vote registered successfully!')
     else:
         flash('You have already voted in this poll.')
@@ -162,8 +171,10 @@ def manage_club(club_id):
             is_private = 1 if request.form.get('is_private') == '1' else 0
             passcode = request.form.get('passcode', '').strip() if is_private else ''
 
-            if not name:
-                flash('Club name cannot be empty.')
+            if not name or not description or not genre:
+                flash('Club name, description, and genre cannot be empty.')
+            elif is_private and not passcode:
+                flash('Private clubs require a passcode.')
             else:
                 update_club_settings(club_id, name, description, genre, is_private, passcode)
                 flash('Club settings updated successfully!')
@@ -206,11 +217,25 @@ def update_progress(club_id):
     if not _require_login():
         return redirect(url_for('auth.login'))
 
-    # Extract book information from the request form
-    book_id = request.form.get('book_id')
-    highest_chapter = request.form.get('highest_chapter')
+    if not is_club_member(session['user_id'], club_id):
+        flash('You must be a member of this club.')
+        return redirect(url_for('club.view_club', club_id=club_id))
 
-    if book_id is not None and highest_chapter is not None:
-        save_user_progress(session['user_id'], int(book_id), int(highest_chapter))
+    active_book = get_active_book(club_id)
+    try:
+        book_id = int(request.form.get('book_id'))
+        highest_chapter = int(request.form.get('highest_chapter'))
+    except (TypeError, ValueError):
+        flash('Invalid progress update.')
+        return redirect(url_for('club.view_club', club_id=club_id))
 
+    max_ch = 0
+    if active_book:
+        max_ch = active_book['total_chapters'] + (1 if active_book['has_epilogue'] else 0)
+
+    if not active_book or active_book['id'] != book_id or not -1 <= highest_chapter <= max_ch:
+        flash('Invalid progress update.')
+        return redirect(url_for('club.view_club', club_id=club_id))
+
+    save_user_progress(session['user_id'], book_id, highest_chapter)
     return redirect(url_for('club.view_club', club_id=club_id))
