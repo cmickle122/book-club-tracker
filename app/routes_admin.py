@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-import requests
 from app.db import (
     is_club_member,
     get_active_poll,

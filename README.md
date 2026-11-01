@@ -1,10 +1,10 @@
-# book-club-tracker
-## CST5322 Group Project
-__ is a web application for managing online book clubs. The application features tracking chapter progress, spoiler-protected discussion boards, and voting in polls. Integration of Google Books API enables users to search for real books. 
+# BookCircle
+## CST5322 Group Project (Team03)
+BookCircle is a web application for managing online book clubs and social reading. The application features tracking chapter progress, spoiler-protected discussion boards, and voting in polls. Integration of Google Books API enables users to search for real books. 
 
   
 
-####  Prerequisites: Python Version 3.12+
+#### Prerequisites: Python Version 3.12+
 
 #### Dependencies: Flask, requests, Wekzeug, Jinja2 (found in `requirements.txt`)
 
@@ -27,7 +27,12 @@ source venv/bin/activate
 ```
 pip install -r requirements.txt
 ```
-### 4. Initialize and Seed the database
+### 4. Acquire a Google Books API Key
+```
+$env:GOOGLE_BOOKS_API_KEY="paste-your-key-here"
+```
+
+### 5. Initialize and Seed the database
 ```
 python seed.py
 ```

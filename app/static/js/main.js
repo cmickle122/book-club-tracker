@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Page-Turner App JavaScript initialized.");
+    console.log("BookCircle App JavaScript initialized.");
 
     const spoilerLinks = document.querySelectorAll('.spoiler-thread-link');
     spoilerLinks.forEach(function(link) {
@@ -8,10 +8,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetChapter = parseInt(this.getAttribute('data-chapter-num') || '0');
 
             if (targetChapter > userProgress) {
-                const progressText = userProgress < 0 ? 'Not Started' : `Chapter ${userProgress}`;
+                const chapterLabel = (n) => n === 0 ? 'Prologue' : `Chapter ${n}`;
+                const progressText = userProgress < 0 ? 'Not Started' : chapterLabel(userProgress);
 
                 const confirmAccess = confirm(
-                    `⚠️ SPOILER WARNING!\n\nYour current progress is ${progressText}, but this thread discusses Chapter ${targetChapter}.\n\nClick OK to proceed to the discussion. Click Cancel to go back.`
+                    `⚠️ SPOILER WARNING!\n\nYour current progress is ${progressText}, but this thread discusses ${chapterLabel(targetChapter)}.\n\nClick OK to proceed to the discussion. Click Cancel to go back.`
                 );
                 if (!confirmAccess) {
                     e.preventDefault();

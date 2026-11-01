@@ -26,7 +26,6 @@ def dashboard():
 
     clubs = []
     for club in clubs_raw:
-        # Use helper function instead of raw db.execute
         active_book = get_active_book(club['id'])
         clubs.append({
             'club': club,
@@ -57,9 +56,11 @@ def login():
 def register():
     """DEVELOPER 1: User Registration"""
     if request.method == 'POST':
+        
         username = request.form.get('username','').strip()
         email = request.form.get('email','').strip()
         password = request.form.get('password','')
+        confirm_password = request.form.get('confirm_password','')
 
         if not username or not email or not password:
             flash('All fields required')
@@ -69,9 +70,8 @@ def register():
             flash('Password must be at least 6 characters.')
             return render_template('register.html')
 
-        exists = get_user_by_username_or_email(username, email)
-        if exists:
-            flash('Email or username already taken')
+        if password != confirm_password:
+            flash('Passwords do not match.')
             return render_template('register.html')
 
         hashed = generate_password_hash(password)
@@ -97,8 +97,9 @@ def search_clubs():
     
     q = request.args.get('q','').strip()
     clubs = find_clubs(q)
+    joined_ids = {c['id'] for c in get_user_clubs(session['user_id'])}
 
-    return render_template('search_clubs.html', clubs=clubs, q=q)
+    return render_template('search_clubs.html', clubs=clubs, q=q, joined_ids=joined_ids)
 
 @auth_bp.route('/clubs/create', methods=['GET', 'POST'])
 def create_club():
@@ -136,7 +137,6 @@ def join_club(club_id):
         flash('Club not found')
         return redirect(url_for('auth.search_clubs'))
 
-    # Passcode verification logic for private clubs
     if club['is_private']:
         entered = request.form.get('passcode', '')
         if entered != club['passcode']:

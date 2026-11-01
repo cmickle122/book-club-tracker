@@ -3,20 +3,23 @@
 <div class="container mt-4">
   {% if not is_member %}
   <div class="alert alert-warning show mb-3" role="alert">
-    You are not a member of this club. To become a member, click the Join Club button at the bottom of the page!
+    You are not a member of this club. To become a member, click the Join Club button!
   </div>
   {% endif %}
 
-  <!-- Header with Title and Admin Panel Button -->
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="mb-0">{{ club['name'] }}</h2>
-    {% if is_admin %}
-      <a href="{{ url_for('admin.manage_club', club_id=club['id']) }}" class="btn btn-primary">Manage Club</a>
-    {% endif %}
-  </div>
+      <h2 class="mb-0">{{ club['name'] }}</h2>
+      {% if is_admin %}
+        <a href="{{ url_for('admin.manage_club', club_id=club['id']) }}" class="btn btn-primary">Manage Club</a>
+      {% elif not is_member and not club['is_private'] %}
+        <form method="POST" action="{{ url_for('auth.join_club', club_id=club['id']) }}">
+          <button type="submit" class="btn btn-success">Join Club</button>
+        </form>
+      {% endif %}
+    </div>
   <p class="text-muted">{{ club['description'] }} | Genre: {{ club['genre'] }} | Admin: {{ club['admin_name'] }}</p>
 
-  <!-- 1. Active read -->
+  <!-- Active read -->
   {% if active_book %}
   <div class="card mb-4 shadow-sm">
     <div class="card-body d-flex align-items-center">
@@ -25,38 +28,47 @@
       {% endif %}
       <div class="w-100">
         <h4>{{ active_book['title'] }} by {{ active_book['author'] }}</h4>
-        <p class="mb-1">Deadline: {{ active_book['target_deadline'] or 'No deadline set' }}</p>
-        
-        <!-- Progress Bar (ONLY for Members) -->
-        {% if is_member %}
-          <p class="mb-1">Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
-          <div class="progress mb-3"><div class="progress-bar bg-success" style="width: {{ my_progress['pct'] }}%"></div></div>
 
-          <form method="POST" action="{{ url_for('admin.update_progress', club_id=club['id']) }}" class="row g-2 align-items-center">
-            <input type="hidden" name="book_id" value="{{ active_book['id'] }}">
-            <div class="col-auto">
-              <label for="highest_chapter" class="form-label mb-0 fw-bold">Update Progress:</label>
-            </div>
-            <div class="col-auto">
-              <select name="highest_chapter" id="highest_chapter" class="form-select form-select-sm">
-                <option value="-1" {% if my_progress['highest_chapter'] == -1 or my_progress['highest_chapter'] is none %}selected{% endif %}>Not Started</option>
-                {% for ch in chapters %}
-                  <option value="{{ ch }}" {% if my_progress['highest_chapter'] == ch %}selected{% endif %}>
-                    {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-auto">
-              <button type="submit" class="btn btn-sm btn-primary">Save Progress</button>
-            </div>
-          </form>
+        {% if active_book['total_chapters'] %}
+          <p class="mb-1">Deadline: {{ active_book['target_deadline'] or 'No deadline set' }}</p>
+        {% endif %} 
+        
+        <!-- Progress Bar -->
+        {% if is_member %}
+          {% if not active_book['total_chapters'] %}
+            <p class="text-muted fst-italic mb-0">Waiting for the admin to set up book details.</p>
+          {% else %}
+            <p class="mb-1">Your progress: {{ my_progress['completed'] }}/{{ my_progress['total'] }} ({{ my_progress['pct'] }}%)</p>
+            <div class="progress mb-3"><div class="progress-bar bg-success" style="width: {{ my_progress['pct'] }}%"></div></div>
+
+            <form method="POST" action="{{ url_for('admin.update_progress', club_id=club['id']) }}" class="row g-2 align-items-center">
+              <input type="hidden" name="book_id" value="{{ active_book['id'] }}">
+              <div class="col-auto">
+                <label for="highest_chapter" class="form-label mb-0 fw-bold">Update Progress:</label>
+              </div>
+              <div class="col-auto">
+                <select name="highest_chapter" id="highest_chapter" class="form-select form-select-sm">
+                  <option value="-1" {% if my_progress['highest_chapter'] == -1 or my_progress['highest_chapter'] is none %}selected{% endif %}>Not Started</option>
+                  {% for ch in chapters %}
+                    <option value="{{ ch }}" {% if my_progress['highest_chapter'] == ch %}selected{% endif %}>
+                      {% if ch == 0 %}Prologue{% elif ch > active_book['total_chapters'] %}Epilogue{% else %}Chapter {{ ch }}{% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary">Save Progress</button>
+              </div>
+            </form>
+          {% endif %}
         {% endif %}
       </div>
     </div>
   </div>
 
-  <h5>Chapter Discussions (spoiler-protected)</h5>
+  <!-- Discussion Board -->
+  {% if is_member %}
+  <h5>Chapter Discussions</h5>
   <div class="list-group mb-4">
     {% for ch in chapters %}
       <a href="{{ url_for('club.view_discussion', club_id=club['id'], chapter_num=ch) }}" 
@@ -67,8 +79,9 @@
       </a>
     {% endfor %}
   </div>
+  {% endif %}
 
-  <!-- 2. Active Voting Poll -->
+  <!-- Active Voting Poll -->
   {% elif active_poll or pending_closed_poll %}
   <div class="card mb-4 shadow-sm {% if active_poll %}border-primary{% else %}border-dark{% endif %}">
     <div class="card-header {% if active_poll %}bg-primary{% else %}bg-dark{% endif %} text-white d-flex justify-content-between align-items-center">
@@ -82,7 +95,7 @@
     <div class="card-body">
 
       {% if active_poll %}
-      <!-- Google Books API Search & Nomination Form (ONLY for Members) -->
+      <!-- Google Books API search and nomination form -->
       {% if is_member %}
         <h6 class="fw-bold mb-2">Search Google Books to Nominate a Book:</h6>
         <form method="POST" class="row g-2 mb-3">
@@ -131,7 +144,7 @@
         </div>
       {% endif %}
 
-      <!-- Nominated Books & Voting List (Visible to all, voting buttons ONLY for members) -->
+      <!-- Nominated books and voting list (visible to all, voting buttons ONLY for members) -->
       <h6 class="fw-bold mb-3">{% if pending_closed_poll %}Final Poll Results:{% else %}Nominated Books in Poll:{% endif %}</h6>
       {% if nominations %}
         <div class="list-group mb-2">
@@ -157,7 +170,7 @@
                 </div>
               </div>
 
-              <!-- Vote Button (ONLY for Members) -->
+              <!-- Vote button (ONLY for members) -->
               {% if active_poll and is_member %}
                 <form method="POST" action="{{ url_for('admin.vote_poll', club_id=club['id']) }}">
                   <input type="hidden" name="poll_id" value="{{ active_poll['id'] }}">
@@ -175,14 +188,14 @@
     </div>
   </div>
 
-  <!-- 3. Fallback alert -->
+  <!-- No active book or poll message -->
   {% else %}
   <div class="alert alert-secondary mb-4">
-    No active book or voting poll right now.
+    The admin has not set an active book or voting poll yet.
   </div>
   {% endif %}
 
-  <!-- Members List (ONLY visible to Members) -->
+  <!-- Members list (ONLY visible to members) -->
   {% if is_member %}
     <h5>Members</h5>
     <ul class="list-group mb-4">
@@ -194,15 +207,9 @@
     </ul>
   {% endif %}
 
-  <!-- Action Buttons: Join for Non-Members, Leave for Non-Admin Members -->
+   <!-- Leave for non-admins -->
   <div class="mb-4">
-    {% if not is_member %}
-      {% if not club['is_private'] %}
-        <form method="POST" action="{{ url_for('auth.join_club', club_id=club['id']) }}">
-          <button type="submit" class="btn btn-success">Join Club</button>
-        </form>
-      {% endif %}
-    {% elif not is_admin %}
+    {% if is_member and not is_admin %}
       <form method="POST" action="{{ url_for('club.leave_club', club_id=club['id']) }}">
         <button class="btn btn-outline-danger">Leave Club</button>
       </form>

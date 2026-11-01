@@ -31,9 +31,9 @@ def view_club(club_id):
     is_member = is_club_member(session['user_id'], club_id)
     is_admin = (club['admin_id'] == session['user_id'])
 
-    if not is_club_member(session['user_id'], club_id):
-        flash('Join this club to view its discussions.')
-        return redirect(url_for('club.view_club', club_id=club_id))
+    if club['is_private'] and not is_member:
+        flash('Access Denied: You cannot view a private club. You must join with a passcode to view its content.')
+        return redirect(url_for('auth.search_clubs'))
 
     active_book = get_active_book(club_id)
 
@@ -47,7 +47,7 @@ def view_club(club_id):
 
         total_units = total_chapters + has_prologue + has_epilogue
         
-        # Calculate reading progress metrics ONLY for active members
+        # Calculate reading progress metrics (ONLY for active members)
         if is_member:
             completed = get_user_completed_chapters(session['user_id'], active_book['id'], has_prologue)
             pct = round((completed / total_units) * 100) if total_units > 0 else 0
@@ -78,7 +78,7 @@ def view_club(club_id):
         if pending_closed_poll:
             nominations = get_poll_results(pending_closed_poll['id'])
 
-    # Handle Google Books API Search when submitting from club.html (Members Only)
+    # Google Books API Search (members only)
     search_results = []
     search_query = ''
 
@@ -147,13 +147,14 @@ def view_discussion(club_id, chapter_num):
 
     club = get_club_by_id(club_id)
     active_book = get_active_book(club_id)
+
     if not club or not active_book:
         flash('Club or active book not found')
         return redirect(url_for('auth.dashboard'))
 
-    if club['is_private'] and not is_club_member(session['user_id'], club_id):
-        flash('Access Denied: You cannot view a private club. You must join with a passcode to view its content.')
-        return redirect(url_for('auth.search_clubs'))
+    if not is_club_member(session['user_id'], club_id):
+        flash('Access Denied: You are not a member of this club.')
+        return redirect(url_for('club.view_club', club_id=club_id))
 
     if active_book['is_active'] == 0:
         flash('This book is archived. Read-only mode.')

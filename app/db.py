@@ -99,7 +99,7 @@ def insert_club(name, description, genre, is_private, passcode, admin_id):
     cur = db.execute('''
         INSERT INTO BookClubs (name, description, genre, is_private, passcode, admin_id)
         VALUES (?, ?, ?, ?, ?, ?)
-    ''', (name, description, genre, is_private, passcode, admin_id))  # FIXED: Changed session['user_id'] to admin_id
+    ''', (name, description, genre, is_private, passcode, admin_id))
         
     club_id = cur.lastrowid
     db.execute('INSERT INTO ClubMemberships (user_id, club_id) VALUES (?, ?)',

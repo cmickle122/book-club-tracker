@@ -29,12 +29,16 @@
             </div>
             <p class="text-muted"><small>{{ club['genre'] or 'General' }} • {{ club['description'][:120] }}</small></p>
             
-            <form method="POST" action="{{ url_for('auth.join_club', club_id=club['id']) }}" class="d-flex">
-              {% if club['is_private'] %}
-                <input name="passcode" type="password" class="form-control form-control-sm me-2" placeholder="Passcode required" required>
+            <form method="POST" action="{{ url_for('auth.join_club', club_id=club['id']) }}" class="d-flex justify-content-end">
+              {% if club['id'] in joined_ids %}
+                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Already Joined</button>
+              {% else %}
+                {% if club['is_private'] %}
+                  <input name="passcode" type="password" class="form-control form-control-sm me-2" placeholder="Passcode required" required>
+                {% endif %}
+                <button class="btn btn-sm btn-primary">Join</button>
               {% endif %}
-              <button class="btn btn-sm btn-primary">Join</button>
-              <a href="{{ url_for('club.view_club', club_id=club['id']) }}" class="btn btn-sm btn-outline-secondary ms-2">View</a>
+              <a href="{{ url_for('club.view_club', club_id=club['id']) }}" class="btn btn-sm btn-outline-primary ms-2">View</a>
             </form>
           </div>
         </div>

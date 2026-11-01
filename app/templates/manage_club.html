@@ -7,7 +7,7 @@
     <h2>Admin Panel: {{ club['name'] }}</h2>
 
     <div class="row mt-4">
-        <!-- 1. Active book has highest priority and is displayed first if it exists -->
+        <!-- Active book has highest priority and is displayed first if it exists -->
         {% if active_book %}
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm border-success">
@@ -34,7 +34,7 @@
                             </p>
                         </div>
                         <div class="col-auto text-end">
-                            <!-- Toggle to adjust book details form -->
+                            <!-- Toggle to adjust book details -->
                             <button class="btn btn-outline-primary btn-sm me-2" type="button" data-bs-toggle="collapse" data-bs-target="#adjustBookForm" aria-expanded="false">
                                 Edit Book Details
                             </button>
@@ -94,7 +94,7 @@
             </div>
         </div>
 
-        <!-- 2. Live Poll Monitoring -->
+        <!-- Live poll -->
         {% elif latest_poll and latest_poll.is_active %}
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm border-primary">
@@ -160,7 +160,7 @@
             </div>
         </div>
 
-        <!-- 3. Closed Poll Results & 1-Click Winner Selection -->
+        <!-- Closed poll results with winner selection -->
         {% elif pending_closed_poll %}
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm border-dark">
@@ -226,7 +226,7 @@
             </div>
         </div>
 
-        <!-- 4. Open New Poll (If no active book or poll exists) -->
+        <!-- Open new poll (if no active book or poll exists) -->
         {% else %}
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm border-info">
@@ -257,10 +257,10 @@
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">⚙️ Edit Club Details & Privacy</h4>
                     <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#editClubForm" aria-expanded="false">
-                        Toggle Form
+                        Click to Show
                     </button>
                 </div>
-                <div class="card-body collapse show" id="editClubForm">
+                <div class="card-body collapse" id="editClubForm">
                     <form method="POST">
                         <input type="hidden" name="action" value="update_club_details">
                         
@@ -303,7 +303,7 @@
         </div>
 
 
-        <!-- Club members list (always visible) -->
+        <!-- Club members list -->
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">

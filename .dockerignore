@@ -1,0 +1,4 @@
+   venv/
+   bookclub.db
+   __pycache__/
+   .git/
