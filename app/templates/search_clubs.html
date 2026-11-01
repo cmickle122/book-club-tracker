@@ -45,7 +45,7 @@
       </div>
     {% else %}
       <div class="col-12">
-        <div class="alert alert-info">No clubs found for "{{ q }}". <a href="{{ url_for('auth.create_club') }}">Create one?</a></div>
+        <div class="alert alert-info">No clubs found. <a href="{{ url_for('auth.create_club') }}">Create one?</a></div>
       </div>
     {% endfor %}
   </div>
