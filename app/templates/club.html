@@ -145,7 +145,7 @@
       {% endif %}
 
       <!-- Nominated books and voting list (visible to all, voting buttons ONLY for members) -->
-      <h6 class="fw-bold mb-3">{% if pending_closed_poll %}Final Poll Results:{% else %}Nominated Books in Poll:{% endif %}</h6>
+      <h6 class="fw-bold mb-3">{% if pending_closed_poll %}Final Poll Results:{% else %}Nominated Books:{% endif %}</h6>
       {% if nominations %}
         <div class="list-group mb-2">
           {% for n in nominations %}
@@ -160,7 +160,7 @@
                   <h6 class="mb-0 fw-bold">
                     {{ n['title'] }}
                     {% if pending_closed_poll and loop.first %}
-                      <span class="badge bg-success ms-2">WINNER / Top Vote</span>
+                      <span class="badge bg-success ms-2">Top Vote</span>
                     {% endif %}
                   </h6>
                   <small class="text-muted">by {{ n['author'] or 'Unknown' }}</small>

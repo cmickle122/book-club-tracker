@@ -77,7 +77,7 @@ def seed_database():
     # 4. Create active polls (id, club_id, title, is_active)
     polls = [
         (1, 2, "Vote for Next Month's Mystery", 0),
-        (2, 4, 'Select Winter Historical Selection', 1)
+        (2, 4, 'Winter Historical Selection', 1)
     ]
     cursor.executemany('INSERT OR IGNORE INTO BookPolls (id, club_id, title, is_active) VALUES (?, ?, ?, ?)', polls)
 
