@@ -9,6 +9,4 @@ COPY . .
 
 EXPOSE 5000
 
-ENV FLASK_APP=run.py
-
-CMD ["python", "run.py"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} run:app"]

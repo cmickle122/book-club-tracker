@@ -1,19 +1,108 @@
+import os
 import sqlite3
+import libsql
+
 from flask import g, current_app
 from app.models import SCHEMA_SQL
 
+
+class CompatibleRow:
+    """Allow rows to be accessed by column name or numeric index."""
+
+    def __init__(self, columns, values):
+        self._columns = columns
+        self._values = tuple(values)
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self._values[self._columns.index(key)]
+        return self._values[key]
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+    def keys(self):
+        return self._columns
+
+
+class CompatibleCursor:
+    """Adapt libsql query results to support named-column access."""
+
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def _convert_row(self, row):
+        if row is None:
+            return None
+
+        columns = [column[0] for column in self._cursor.description]
+        return CompatibleRow(columns, row)
+
+    def fetchone(self):
+        return self._convert_row(self._cursor.fetchone())
+
+    def fetchall(self):
+        return [
+            self._convert_row(row)
+            for row in self._cursor.fetchall()
+        ]
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class CompatibleConnection:
+    """Adapt the libsql connection while preserving its usual operations."""
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    def execute(self, sql, parameters=()):
+        return CompatibleCursor(
+            self._connection.execute(sql, parameters)
+        )
+
+    def executescript(self, sql):
+        return self._connection.executescript(sql)
+
+    def commit(self):
+        return self._connection.commit()
+
+    def close(self):
+        return self._connection.close()
+
+
 def get_db():
     if 'db' not in g:
-        db_path = current_app.config.get('DATABASE', 'bookclub.db')
-        g.db = sqlite3.connect(db_path)
-        g.db.row_factory = sqlite3.Row
+        database_url = os.environ.get('TURSO_DATABASE_URL')
+        auth_token = os.environ.get('TURSO_AUTH_TOKEN')
+
+        if database_url and auth_token:
+            connection = libsql.connect(
+                database_url,
+                auth_token=auth_token
+            )
+            g.db = CompatibleConnection(connection)
+        else:
+            db_path = current_app.config.get(
+                'DATABASE',
+                'bookclub.db'
+            )
+            g.db = sqlite3.connect(db_path)
+            g.db.row_factory = sqlite3.Row
+
     return g.db
+
 
 def init_db():
     db = get_db()
     db.executescript(SCHEMA_SQL)
     db.commit()
-    print("Database tables initialized successfully in bookclub.db!")
+    print("Database tables initialized successfully!")
+
 
 def close_db(e=None):
     db = g.pop('db', None)
@@ -133,6 +222,10 @@ def record_vote(poll_id, nomination_id, user_id):
         return True
     except sqlite3.IntegrityError:
         return False
+    except ValueError as e:
+        if 'UNIQUE constraint failed' in str(e):
+            return False
+        raise
 
 def get_latest_poll(club_id):
     """
